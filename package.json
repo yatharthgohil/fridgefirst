@@ -26,7 +26,25 @@
     "@types/react-dom": "19.3.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.0",
+    "supabase": "^2.122.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3"
-  }
+  },
+  "description": "Minimal Next.js App Router starter using TypeScript and Tailwind CSS. The home page is intentionally blank. No product components, authentication flow, database schema, or AI integration are implemented yet.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yatharthgohil/fridgefirst.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/yatharthgohil/fridgefirst/issues"
+  },
+  "homepage": "https://github.com/yatharthgohil/fridgefirst#readme"
 }
