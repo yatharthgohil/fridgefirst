@@ -50,6 +50,13 @@ npm start
 
 `npm start` runs the production app after a successful build.
 
+### Authentication tests
+
+Start the app with `npm run dev` in one terminal, then run `npm test` in another.
+The two HTTP tests check signed-out dashboard protection and an OAuth callback
+without a code. They use no Google account or session cookies. To test another
+running instance, set `TEST_BASE_URL` (default: `http://localhost:3000`).
+
 ## Organization
 
 | Directory | Responsibility |
