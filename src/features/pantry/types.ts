@@ -1,4 +1,4 @@
-import { UrgencyLevel } from "@/components/Badge";
+export type UrgencyLevel = "critical" | "soon" | "fresh";
 
 export type StorageLocation = "Fridge" | "Freezer" | "Pantry" | "Counter";
 
