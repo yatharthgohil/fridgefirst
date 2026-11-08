@@ -11,6 +11,8 @@ export interface PantryViewProps {
   onDeleteItem?: (item: PantryItem) => void;
   notes?: Record<number, string>;
   onUpdateNote?: (id: number, note: string) => void;
+  /** Slot rendered first in each row's action area (e.g. consume/discard controls). */
+  renderItemActions?: (item: PantryItem) => React.ReactNode;
 }
 
 export function PantryView({
@@ -20,6 +22,7 @@ export function PantryView({
   onDeleteItem,
   notes = {},
   onUpdateNote,
+  renderItemActions,
 }: PantryViewProps) {
   const [filter, setFilter] = useState("All");
   const [pantrySort, setPantrySort] = useState("expiration");
@@ -180,6 +183,7 @@ export function PantryView({
                   <span className="added-date">{item.added}</span>
                   <ExpiryBadge urgency={item.urgency} expiry={item.expiry} />
                   <div className="inventory-actions">
+                    {renderItemActions?.(item)}
                     {onEditItem && (
                       <Button variant="secondary" onClick={() => onEditItem(item)}>
                         Edit

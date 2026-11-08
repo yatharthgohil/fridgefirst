@@ -11,6 +11,8 @@ export interface OverviewViewProps {
   onNavigate?: (pageName: string) => void;
   onEditItem?: (item: PantryItem) => void;
   onNotice?: (msg: string) => void;
+  /** Slot replacing the static "Pantry activity" block (e.g. RecentActivityPanel). */
+  activityPanel?: React.ReactNode;
 }
 
 export function OverviewView({
@@ -20,6 +22,7 @@ export function OverviewView({
   onNavigate,
   onEditItem,
   onNotice,
+  activityPanel,
 }: OverviewViewProps) {
   const [filter, setFilter] = useState("All");
 
@@ -223,51 +226,55 @@ export function OverviewView({
               )}
             </div>
           </div>
-          <div className="side-section-heading activity-title">
-            <div>
-              <span className="eyebrow">RECENT</span>
-              <h2>Pantry activity</h2>
-            </div>
-          </div>
-          <div className="activity-list">
-            <div className="activity-item">
-              <span className="activity-icon added">
-                <Icon name="plus" size={15} />
-              </span>
+          {activityPanel ?? (
+            <>
+            <div className="side-section-heading activity-title">
               <div>
-                <strong>4 items added</strong>
-                <p>From grocery photo</p>
+                <span className="eyebrow">RECENT</span>
+                <h2>Pantry activity</h2>
               </div>
-              <time>2h</time>
             </div>
-            <div className="activity-item">
-              <span className="activity-icon cooked">
-                <Icon name="check" size={15} />
-              </span>
-              <div>
-                <strong>Tomato pasta cooked</strong>
-                <p>5 ingredients updated</p>
+            <div className="activity-list">
+              <div className="activity-item">
+                <span className="activity-icon added">
+                  <Icon name="plus" size={15} />
+                </span>
+                <div>
+                  <strong>4 items added</strong>
+                  <p>From grocery photo</p>
+                </div>
+                <time>2h</time>
               </div>
-              <time>Sun</time>
-            </div>
-            <div className="activity-item">
-              <span className="activity-icon removed">
-                <Icon name="minus" size={15} />
-              </span>
-              <div>
-                <strong>Milk discarded</strong>
-                <p>Expired · 0.3 L</p>
+              <div className="activity-item">
+                <span className="activity-icon cooked">
+                  <Icon name="check" size={15} />
+                </span>
+                <div>
+                  <strong>Tomato pasta cooked</strong>
+                  <p>5 ingredients updated</p>
+                </div>
+                <time>Sun</time>
               </div>
-              <time>Sat</time>
+              <div className="activity-item">
+                <span className="activity-icon removed">
+                  <Icon name="minus" size={15} />
+                </span>
+                <div>
+                  <strong>Milk discarded</strong>
+                  <p>Expired · 0.3 L</p>
+                </div>
+                <time>Sat</time>
+              </div>
             </div>
-          </div>
-          <Button
-            variant="ghost"
-            className="activity-link"
-            onClick={() => onNavigate?.("Activity")}
-          >
-            View all activity <Icon name="arrow" size={16} />
-          </Button>
+            <Button
+              variant="ghost"
+              className="activity-link"
+              onClick={() => onNavigate?.("Activity")}
+            >
+              View all activity <Icon name="arrow" size={16} />
+            </Button>
+            </>
+          )}
         </aside>
       </section>
     </>

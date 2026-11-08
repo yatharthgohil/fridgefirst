@@ -17,7 +17,16 @@ import {
   initialActivityEvents,
   ActivityEvent,
   calculateExpirationMeta,
+  InventoryAdjustControls,
+  RecentActivityPanel,
+  createFixtureInventoryApi,
+  toFixtureItem,
+  withUpdatedQuantity,
+  historyEntryToActivityEvent,
+  formatDelta,
+  operationLabel,
 } from "@/features/pantry";
+import type { InventoryAdjustmentResponse } from "@/contracts/inventory";
 
 import {
   RecipesView,
@@ -83,6 +92,18 @@ export function AppShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileDraft, setProfileDraft] = useState<UserProfile | null>(null);
 
+  // Inventory API for consume/discard + history. Swap for createHttpInventoryApi()
+  // once the atomic inventory endpoints exist; the components don't change.
+  const [inventoryApi] = useState(() =>
+    createFixtureInventoryApi({ items: initialPantryItems.map(toFixtureItem) })
+  );
+  const [activityRefresh, setActivityRefresh] = useState(0);
+
+  // Fixture only: mirror mock add/edit/delete into inventory history.
+  useEffect(() => {
+    inventoryApi.syncItems(items.map(toFixtureItem));
+  }, [inventoryApi, items]);
+
   // Toast notice
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -100,6 +121,25 @@ export function AppShell({
   const selectedRecipe = suggestedRecipes.find((r) => r.id === selectedRecipeId) || null;
 
   // Handlers
+  const handleInventoryAdjusted = (result: InventoryAdjustmentResponse) => {
+    // Server-confirmed quantity is authoritative.
+    setItems((curr) =>
+      curr.map((item) =>
+        String(item.id) === result.item.id ? withUpdatedQuantity(item, result.item.quantity) : item
+      )
+    );
+    if (!result.replayed) {
+      setActivity((curr) => [historyEntryToActivityEvent(result.entry), ...curr]);
+    }
+    setActivityRefresh((n) => n + 1);
+    flashNotice(
+      `${result.entry.itemName}: ${operationLabel(result.entry.operation).toLowerCase()} ${formatDelta(
+        result.entry.quantityDelta,
+        result.entry.unit
+      ).replace(/^[+−]/, "")}`
+    );
+  };
+
   const handleSavePantryItem = (updated: PantryItem) => {
     const meta = calculateExpirationMeta(updated.expirationDate);
     setItems((curr) =>
@@ -109,6 +149,7 @@ export function AppShell({
           : item
       )
     );
+    setActivityRefresh((n) => n + 1);
     flashNotice(`${updated.name} updated`);
   };
 
@@ -127,6 +168,7 @@ export function AppShell({
       },
       ...curr,
     ]);
+    setActivityRefresh((n) => n + 1);
     flashNotice(`${itemToRemove.name} removed from pantry`);
   };
 
@@ -173,6 +215,7 @@ export function AppShell({
     ]);
 
     setReviewOpen(false);
+    setActivityRefresh((n) => n + 1);
     flashNotice(`${confirmed.length} groceries added to pantry`);
   };
 
@@ -248,6 +291,13 @@ export function AppShell({
               onDeleteItem={(item) => setPendingRemoval(item)}
               notes={notes}
               onUpdateNote={handleUpdateNote}
+              renderItemActions={(item) => (
+                <InventoryAdjustControls
+                  item={item}
+                  api={inventoryApi}
+                  onAdjusted={handleInventoryAdjusted}
+                />
+              )}
             />
           ) : activeNav === "Recipes" ? (
             <RecipesView
@@ -266,6 +316,13 @@ export function AppShell({
               onNavigate={setActiveNav}
               onEditItem={(item) => setEditingItem(item)}
               onNotice={flashNotice}
+              activityPanel={
+                <RecentActivityPanel
+                  api={inventoryApi}
+                  refreshToken={activityRefresh}
+                  onViewAll={() => setActiveNav("Activity")}
+                />
+              }
             />
           )}
         </div>
