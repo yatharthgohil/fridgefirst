@@ -25,6 +25,14 @@ import {
   historyEntryToActivityEvent,
   formatDelta,
   operationLabel,
+  ExpirationStatus,
+  PantryFilterBar,
+  PantryNoMatches,
+  usePantryFilters,
+  getExpiration,
+  withFixtureExpiration,
+  applyFixtureExpirationEdit,
+  expirationFixtureItems,
 } from "@/features/pantry";
 import type { InventoryAdjustmentResponse } from "@/contracts/inventory";
 
@@ -56,6 +64,11 @@ import {
   UserProfile,
 } from "@/features/account";
 
+// Fixture stand-in for items loaded from the API with expiration metadata attached.
+const initialItems: PantryItem[] = [...initialPantryItems, ...expirationFixtureItems].map((item) =>
+  withFixtureExpiration(item)
+);
+
 export interface AppShellProps {
   initialUser?: UserProfile;
   onSignOut?: () => void;
@@ -70,7 +83,7 @@ export function AppShell({
   const [query, setQuery] = useState("");
 
   // Core data states
-  const [items, setItems] = useState<PantryItem[]>(initialPantryItems);
+  const [items, setItems] = useState<PantryItem[]>(initialItems);
   const [activity, setActivity] = useState<ActivityEvent[]>(initialActivityEvents);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [user, setUser] = useState<UserProfile>(initialUser);
@@ -95,7 +108,7 @@ export function AppShell({
   // Inventory API for consume/discard + history. Swap for createHttpInventoryApi()
   // once the atomic inventory endpoints exist; the components don't change.
   const [inventoryApi] = useState(() =>
-    createFixtureInventoryApi({ items: initialPantryItems.map(toFixtureItem) })
+    createFixtureInventoryApi({ items: initialItems.map(toFixtureItem) })
   );
   const [activityRefresh, setActivityRefresh] = useState(0);
 
@@ -119,6 +132,13 @@ export function AppShell({
 
   // Selected recipe object
   const selectedRecipe = suggestedRecipes.find((r) => r.id === selectedRecipeId) || null;
+
+  // Pantry list filters/sort (kept here so they persist across navigation).
+  const pantryFilters = usePantryFilters(items);
+
+  const renderExpiration = (item: PantryItem) => (
+    <ExpirationStatus item={item} expiration={getExpiration(item)} onEditItem={setEditingItem} />
+  );
 
   // Handlers
   const handleInventoryAdjusted = (result: InventoryAdjustmentResponse) => {
@@ -145,7 +165,7 @@ export function AppShell({
     setItems((curr) =>
       curr.map((item) =>
         item.id === updated.id
-          ? { ...updated, expiry: meta.expiry, urgency: meta.urgency }
+          ? applyFixtureExpirationEdit(item, { ...updated, expiry: meta.expiry, urgency: meta.urgency })
           : item
       )
     );
@@ -184,7 +204,7 @@ export function AppShell({
   const handleConfirmDetectedItems = (confirmed: DetectedGrocery[]) => {
     const newPantryEntries: PantryItem[] = confirmed.map((det, idx) => {
       const meta = calculateExpirationMeta(det.expirationDate);
-      return {
+      return withFixtureExpiration({
         id: Date.now() + idx,
         name: det.name,
         quantity: det.quantity,
@@ -196,7 +216,7 @@ export function AppShell({
         icon: det.icon,
         amount: 100,
         added: "Just now",
-      };
+      });
     });
 
     setItems((curr) => [...newPantryEntries, ...curr]);
@@ -298,6 +318,20 @@ export function AppShell({
                   onAdjusted={handleInventoryAdjusted}
                 />
               )}
+              renderExpiration={renderExpiration}
+              listControls={{
+                toolbar: (
+                  <PantryFilterBar
+                    filters={pantryFilters.filters}
+                    onChange={pantryFilters.setFilters}
+                    counts={pantryFilters.counts}
+                    shown={pantryFilters.visibleItems.length}
+                    total={pantryFilters.total}
+                  />
+                ),
+                items: pantryFilters.visibleItems,
+                empty: <PantryNoMatches onClear={pantryFilters.clear} />,
+              }}
             />
           ) : activeNav === "Recipes" ? (
             <RecipesView
@@ -316,6 +350,7 @@ export function AppShell({
               onNavigate={setActiveNav}
               onEditItem={(item) => setEditingItem(item)}
               onNotice={flashNotice}
+              renderExpiration={renderExpiration}
               activityPanel={
                 <RecentActivityPanel
                   api={inventoryApi}

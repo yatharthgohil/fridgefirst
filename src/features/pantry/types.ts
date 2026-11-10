@@ -1,3 +1,5 @@
+import type { ExpirationMeta } from "@/contracts/expiration";
+
 export type UrgencyLevel = "critical" | "soon" | "fresh";
 
 export type StorageLocation = "Fridge" | "Freezer" | "Pantry" | "Counter";
@@ -15,6 +17,8 @@ export interface PantryItem {
   amount: number;
   added: string;
   note?: string;
+  /** Backend expiration metadata (source/status/daysUntil). Rendered as-is by expiration badges. */
+  expiration?: ExpirationMeta;
 }
 
 export interface UnitOption {

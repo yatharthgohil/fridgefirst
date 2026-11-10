@@ -1,0 +1,84 @@
+/*
+ * Expiration badges, date-details dialog and pantry filter bar.
+ * Uses the shared tokens from globals.css. Every state has a written label;
+ * color and the dot symbol only reinforce it.
+ */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Badge ---- */
+.exp-badge { display: inline-flex; align-items: flex-start; gap: 6px; min-width: 0; font-size: 9px; font-weight: 600; line-height: 1.25; text-align: left; }
+.exp-badge .exp-dot { flex: 0 0 auto; display: grid; place-items: center; width: 13px; height: 13px; margin-top: 1px; border-radius: 50%; font-size: 8px; font-style: normal; font-weight: 800; color: var(--white); }
+.exp-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.exp-label { overflow-wrap: anywhere; }
+.exp-tag { width: fit-content; padding: 1px 5px; border-radius: 4px; color: var(--muted); background: #f1f1ec; font-size: 7px; font-weight: 600; letter-spacing: .02em; }
+.exp-badge[data-source="override"] .exp-tag { color: #4a5f78; background: #e7eef3; }
+
+.exp-ok { color: var(--green); }
+.exp-ok .exp-dot { width: 7px; height: 7px; margin-top: 3px; background: #7b9b6b; }
+.exp-soon { color: #9a5a22; }
+.exp-soon .exp-dot { width: 7px; height: 7px; margin-top: 3px; background: var(--amber); }
+.exp-past { color: var(--red); }
+.exp-past .exp-dot { background: var(--red); }
+.exp-unknown { color: var(--muted); font-weight: 500; font-style: italic; }
+.exp-unknown .exp-dot { color: var(--muted); border: 1px dashed #9aa19a; background: transparent; font-style: normal; }
+
+/* ---- Badge as a button (opens details) ---- */
+.exp-trigger.expiry { display: flex; align-items: center; width: fit-content; max-width: 100%; margin: -4px -6px; padding: 4px 6px; cursor: pointer; border: 1px solid transparent; border-radius: 7px; background: transparent; font: inherit; color: inherit; text-align: left; }
+.exp-trigger.expiry:hover { border-color: var(--line); background: var(--white); }
+.exp-trigger.expiry i { width: auto; height: auto; border-radius: 0; }
+.exp-trigger.expiry i.exp-dot { width: 13px; height: 13px; border-radius: 50%; }
+.exp-trigger.expiry .exp-ok i.exp-dot, .exp-trigger.expiry .exp-soon i.exp-dot { width: 7px; height: 7px; }
+
+/* ---- Details dialog ---- */
+.exp-dialog { width: min(400px, 100%); overflow: hidden; border-radius: 16px; background: var(--white); box-shadow: 0 25px 80px rgba(10,25,15,.25); animation: riseIn .2s ease; }
+.exp-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 14px; border-bottom: 1px solid var(--line); }
+.exp-dialog h2 { margin: 5px 0 0; font-family: "Fraunces", serif; font-size: 20px; }
+.exp-dialog-body { display: grid; gap: 10px; padding: 16px 22px 18px; background: var(--paper); }
+.exp-dialog-body p { margin: 0; color: var(--ink); font-size: 11px; line-height: 1.55; }
+.exp-dialog-body .exp-badge { font-size: 11px; }
+.exp-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 13px 22px 16px; border-top: 1px solid var(--line); }
+.exp-dialog > footer .button { min-height: 38px; font-size: 11px; }
+
+/* ---- Filter bar ---- */
+.pantry-filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+.pantry-filter-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.pantry-filter-row:first-child { justify-content: flex-start; }
+.pantry-filter-row:first-child .inventory-search { flex: 1 1 200px; width: auto; max-width: 320px; }
+.pantry-filter-bar input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+.pantry-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pantry-filter-label { margin-right: 2px; color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.pantry-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 10px; cursor: pointer; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; background: var(--white); font-size: 10px; font-weight: 600; }
+.pantry-chip:hover { border-color: #b8c2b9; }
+.pantry-chip[aria-pressed="true"] { color: var(--green-dark); border-color: var(--green); background: var(--green-pale); }
+.pantry-chip-count { min-width: 18px; padding: 1px 5px; border-radius: 999px; color: var(--muted); background: #f1f1ec; font-size: 9px; text-align: center; }
+.pantry-chip[aria-pressed="true"] .pantry-chip-count { color: var(--white); background: var(--green); }
+.pantry-filter-summary { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; }
+.pantry-filter-summary .pantry-clear { padding: 6px 8px; color: var(--green); font-size: 10px; text-decoration: underline; }
+.inventory-empty .pantry-empty-clear { margin-top: 12px; padding: 8px 14px; font-size: 10px; }
+
+@media (max-width: 760px) {
+  .inventory-row > .exp-trigger { justify-self: start; }
+  .pantry-filter-row:first-child { flex-direction: column; align-items: stretch; }
+  .pantry-filter-row:first-child .inventory-search { flex: 0 0 auto; max-width: none; width: 100%; }
+  .pantry-filter-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .pantry-chip { flex: 0 0 auto; min-height: 36px; }
+  .pantry-filter-summary { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 520px) {
+  .modal-backdrop:has(.exp-dialog) { place-items: end center; padding: 0; }
+  .exp-dialog { width: 100%; border-radius: 17px 17px 0 0; }
+  .exp-dialog > footer { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .exp-dialog > footer .button { flex: 1; min-height: 44px; }
+}

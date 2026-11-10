@@ -13,6 +13,8 @@ export interface OverviewViewProps {
   onNotice?: (msg: string) => void;
   /** Slot replacing the static "Pantry activity" block (e.g. RecentActivityPanel). */
   activityPanel?: React.ReactNode;
+  /** Slot replacing the default expiry badge in the item list. */
+  renderExpiration?: (item: PantryItem) => React.ReactNode;
 }
 
 export function OverviewView({
@@ -23,6 +25,7 @@ export function OverviewView({
   onEditItem,
   onNotice,
   activityPanel,
+  renderExpiration,
 }: OverviewViewProps) {
   const [filter, setFilter] = useState("All");
 
@@ -163,7 +166,11 @@ export function OverviewView({
                   </span>
                 </div>
                 <QuantityMeter amount={item.amount} />
-                <ExpiryBadge urgency={item.urgency} expiry={item.expiry} />
+                {renderExpiration ? (
+                  renderExpiration(item)
+                ) : (
+                  <ExpiryBadge urgency={item.urgency} expiry={item.expiry} />
+                )}
                 {onEditItem && (
                   <Button
                     variant="ghost"

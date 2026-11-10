@@ -13,6 +13,17 @@ export interface PantryViewProps {
   onUpdateNote?: (id: number, note: string) => void;
   /** Slot rendered first in each row's action area (e.g. consume/discard controls). */
   renderItemActions?: (item: PantryItem) => React.ReactNode;
+  /** Slot replacing the default expiry badge in each row. */
+  renderExpiration?: (item: PantryItem) => React.ReactNode;
+  /**
+   * Replaces the built-in tabs/sort/search. `items` must already be filtered
+   * and sorted; `empty` is shown when they are empty but the pantry is not.
+   */
+  listControls?: {
+    toolbar: React.ReactNode;
+    items: PantryItem[];
+    empty?: React.ReactNode;
+  };
 }
 
 export function PantryView({
@@ -23,6 +34,8 @@ export function PantryView({
   notes = {},
   onUpdateNote,
   renderItemActions,
+  renderExpiration,
+  listControls,
 }: PantryViewProps) {
   const [filter, setFilter] = useState("All");
   const [pantrySort, setPantrySort] = useState("expiration");
@@ -51,6 +64,9 @@ export function PantryView({
       return a.expirationDate.localeCompare(b.expirationDate);
     });
   }, [filteredItems, pantrySort]);
+
+  const rows = listControls ? listControls.items : sortedPantryItems;
+  const shownCount = listControls ? listControls.items.length : filteredItems.length;
 
   const totalExpiring = items.filter((item) => item.urgency !== "fresh").length;
   const totalFridge = items.filter((item) => item.location === "Fridge").length;
@@ -110,43 +126,47 @@ export function PantryView({
       </div>
 
       <div className="inventory-panel">
-        <div className="inventory-toolbar">
-          <div className="inventory-tabs">
-            {["All", "Expiring", "Fridge", "Pantry"].map((name) => (
-              <Button
-                key={name}
-                variant="ghost"
-                className={filter === name ? "selected" : ""}
-                onClick={() => setFilter(name)}
-              >
-                {name}
-                {name === "All" ? ` (${items.length})` : ""}
-              </Button>
-            ))}
+        {listControls ? (
+          listControls.toolbar
+        ) : (
+          <div className="inventory-toolbar">
+            <div className="inventory-tabs">
+              {["All", "Expiring", "Fridge", "Pantry"].map((name) => (
+                <Button
+                  key={name}
+                  variant="ghost"
+                  className={filter === name ? "selected" : ""}
+                  onClick={() => setFilter(name)}
+                >
+                  {name}
+                  {name === "All" ? ` (${items.length})` : ""}
+                </Button>
+              ))}
+            </div>
+            <div className="inventory-tools">
+              <label className="sort-control">
+                <span>Sort by</span>
+                <select
+                  value={pantrySort}
+                  onChange={(e) => setPantrySort(e.target.value)}
+                  aria-label="Sort pantry items"
+                >
+                  <option value="added">Most recently added</option>
+                  <option value="expiration">Soonest expiration</option>
+                  <option value="alphabetical">Alphabetical</option>
+                </select>
+              </label>
+              <label className="inventory-search">
+                <Icon name="search" size={16} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Find an item"
+                />
+              </label>
+            </div>
           </div>
-          <div className="inventory-tools">
-            <label className="sort-control">
-              <span>Sort by</span>
-              <select
-                value={pantrySort}
-                onChange={(e) => setPantrySort(e.target.value)}
-                aria-label="Sort pantry items"
-              >
-                <option value="added">Most recently added</option>
-                <option value="expiration">Soonest expiration</option>
-                <option value="alphabetical">Alphabetical</option>
-              </select>
-            </label>
-            <label className="inventory-search">
-              <Icon name="search" size={16} />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Find an item"
-              />
-            </label>
-          </div>
-        </div>
+        )}
 
         <div className="inventory-table-head">
           <span>ITEM</span>
@@ -157,7 +177,7 @@ export function PantryView({
         </div>
 
         <div className="inventory-rows">
-          {sortedPantryItems.map((item) => {
+          {rows.map((item) => {
             const hasNote = Boolean(notes[item.id]?.trim());
             const noteIsExpanded = expandedNoteId === item.id;
             return (
@@ -181,7 +201,11 @@ export function PantryView({
                     </span>
                   </div>
                   <span className="added-date">{item.added}</span>
-                  <ExpiryBadge urgency={item.urgency} expiry={item.expiry} />
+                  {renderExpiration ? (
+                    renderExpiration(item)
+                  ) : (
+                    <ExpiryBadge urgency={item.urgency} expiry={item.expiry} />
+                  )}
                   <div className="inventory-actions">
                     {renderItemActions?.(item)}
                     {onEditItem && (
@@ -250,7 +274,8 @@ export function PantryView({
             );
           })}
 
-          {filteredItems.length === 0 && (
+          {shownCount === 0 && items.length > 0 && listControls?.empty}
+          {shownCount === 0 && (items.length === 0 || !listControls?.empty) && (
             <div className="inventory-empty">
               <span>
                 <Icon name="search" />
@@ -263,7 +288,7 @@ export function PantryView({
 
         <div className="inventory-footer">
           <span>
-            Showing {filteredItems.length} of {items.length} items
+            Showing {shownCount} of {items.length} items
           </span>
           <span>Inventory updated just now</span>
         </div>
