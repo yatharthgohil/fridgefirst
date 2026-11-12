@@ -2,7 +2,7 @@
 
 ## Review order
 
-Each branch contains one focused commit relative to the preceding branch. Review and merge the PRs from the first row downward. No changes were pushed to main. The original authentication and implementation branches remain available as working-history references.
+Each branch contains one focused implementation commit relative to the preceding branch. The API PR also records final delivery verification. Review and merge the PRs from the first row downward. No changes were pushed to main. The original authentication and implementation branches remain available as working-history references.
 
 | Branch | Base | Change |
 | --- | --- | --- |
@@ -51,4 +51,4 @@ No hosted migrations or deployment were performed. A role-capable migration admi
 
 Successful live Google login, refresh, sign-out, and signed-in HTTP requests through hosted Supabase remain unverified. The current dashboard still uses frontend fixtures. Amy and Samia's frontend tasks must connect the APIs, use UUID identifiers, format numeric quantities, and render unknown expiration explicitly. These limits are also described in [backend-api.md](backend-api.md).
 
-The scoped auth review found no blocking defects. Its minor unused-message finding was fixed. The backend review and decision trail accompany this delivery. The unavailable `deslop` dependency was replaced by scoped diff reviews, as specified by the local T3 adapter.
+The scoped auth review found no blocking defects. Its minor unused-message finding was fixed. The architecture comparison and its independent review completed before implementation. The final independent backend audit did not return a verdict and was stopped after the user reported apparent looping. That audit is incomplete. Parent source inspection and the 60-test verification completed. The decision trail records this limitation. The unavailable `deslop` dependency was replaced by scoped diff reviews, as specified by the local T3 adapter.
