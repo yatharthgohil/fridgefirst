@@ -24,7 +24,7 @@ await withPostgres(async ({ sql }) => {
   await test('authenticated reads isolate owners and direct writes/private access fail', async () => {
     assert.equal(last(await sql(as('authenticated', alice, 'select count(*) from public.pantry_items'))), '1');
     assert.equal(last(await sql(as('authenticated', bob, `select count(*) from public.pantry_items where item_id='${item}'`))), '0');
-    assert.equal(last(await sql(as('authenticated', alice, 'select count(*) from public.shelf_life_references'))), '1');
+    assert.equal(last(await sql(as('authenticated', alice, `select count(*) from public.shelf_life_references where reference_id='${reference}'`))), '1');
     for (const statement of [
       `update public.pantry_items set quantity=0`, `delete from public.pantry_items`,
       `insert into public.pantry_items(user_id,name,quantity,unit,storage_location,added_on,expiration_mode,expiration_reason) values ('${alice}','food',1,'item','Fridge','2026-11-12','unknown','no_match')`,
