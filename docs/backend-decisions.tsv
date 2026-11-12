@@ -1,0 +1,4 @@
+ts	phase	decision	why	evidence	result
+2026-11-12T20:45:00Z	frame	Scope work to KAN-5 through KAN-8 and reuse Google Auth	KAN-4 explicitly bounds the pantry milestone	docs/backend-plan.md	grounded
+2026-11-12T20:45:01Z	workflow	Use descriptive feature branches based on the current working commit	The user requires commits and forbids work on main	docs/backend-plan.md	feat/pantry-backend created
+2026-11-12T20:45:02Z	baseline	Preserve existing frontend contracts and dependencies	Samia's consume and discard UI already consumes the shared inventory contract	src/contracts/inventory.ts	typecheck passes; lint has 11 existing warnings
