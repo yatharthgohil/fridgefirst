@@ -1,12 +1,12 @@
 # FridgeFirst
 
-Next.js App Router application using TypeScript, Tailwind CSS, and Supabase Auth. The landing page's sign-in and account creation buttons open Google login. Google sign-in creates an account or logs in an existing user, then redirects to the protected pantry dashboard. Pantry data currently uses in-memory fixtures.
+Next.js App Router application using TypeScript, Tailwind CSS, and Supabase Auth. The landing page's sign-in and account creation buttons open Google login. Google sign-in creates an account or logs in an existing user, then redirects to the protected pantry dashboard. Pantry persistence, authenticated CRUD, consume/discard, history, and expiration metadata are implemented in the backend. The dashboard still uses in-memory fixtures pending Amy and Samia's frontend tasks. See [the backend API reference](docs/backend-api.md) for setup and handoff.
 
 See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for product scope, architecture, and implementation decisions.
 
 ## Local development
 
-Use Node.js 22 or newer and npm.
+Use Node.js 22.18 or newer and npm.
 
 ```sh
 npm ci
@@ -27,7 +27,7 @@ The pages render without environment variables, but Google sign-in is disabled u
 
 See the official [Google provider setup](https://supabase.com/docs/guides/auth/social-sign-in/auth-google) and [server-side authentication guide](https://supabase.com/docs/guides/auth/server-side/creating-a-client).
 
-Supabase Auth persists accounts and Google identities in its managed `auth.users` and `auth.identities` tables. No separate profile table or SQL migration is needed for this placeholder. Pantry tables and storage buckets will be added with their features.
+Supabase Auth persists accounts and Google identities in its managed `auth.users` and `auth.identities` tables. No separate profile table is needed. Pantry, inventory history, retry receipts, and shelf-life references are defined by the versioned migrations described in [backend-api.md](docs/backend-api.md). Storage buckets remain pending.
 
 ### Authentication flow and verification
 
@@ -56,7 +56,7 @@ Use Node.js 22.18 or newer for the tests, which import TypeScript directly. Star
 The four HTTP tests check the Google login page, signed-out dashboard protection,
 and missing or denied OAuth callbacks. They use no Google account or session cookies. To test another
 running instance, set `TEST_BASE_URL` (default: `http://localhost:3000`).
-The same command also runs the pantry and inventory tests.
+The same command also runs the pantry, inventory, expiration, API boundary, and signed-out API tests. Database suites create disposable PostgreSQL 18 clusters using `tests/helpers/postgres.mjs`; set `POSTGRES_BIN` if the binaries are outside `C:/Program Files/PostgreSQL/18/bin`. Hosted Supabase and signed-in HTTP behavior remain unverified.
 
 ## Organization
 
@@ -70,8 +70,8 @@ The same command also runs the pantry and inventory tests.
 | `src/server/auth/` | Session verification and authorization helpers |
 | `src/lib/supabase/` | Separate browser/server Supabase helpers |
 | `src/contracts/` | Shared validation schemas and API types |
-| `supabase/migrations/` | Future product database migrations (Auth manages its own user tables) |
-| `supabase/seed/` | Future shelf-life reference data |
+| `supabase/migrations/` | Pantry, inventory command, and expiration migrations |
+| `supabase/seed/` | Shelf-life reference sources and seed documentation |
 | `docs/` | Project decisions and implementation notes |
 | `public/` | Static assets |
 
