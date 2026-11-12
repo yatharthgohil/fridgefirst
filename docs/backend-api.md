@@ -112,7 +112,7 @@ The versioned migration order is:
 
 Files live in [supabase/migrations](../supabase/migrations). Reference values and sources live in [supabase/seed/README.md](../supabase/seed/README.md). [backend-foundation.md](backend-foundation.md) documents grants and ownership. [backend-commands.md](backend-commands.md) is the SQL/RPC contract, including atomicity, lock ordering, rollback, and durable retry receipts. [backend-architecture.md](backend-architecture.md) records the design rationale. Per-ticket statements about missing later work are historical; this document describes the integrated API.
 
-The migration administrator must be able to create restricted roles and assign function owners. `private` must remain outside the Supabase Data API exposed schemas. Authenticated table writes and private command access stay denied. Public RPC execution uses the verified user's session and the restricted executor/writer roles. No hosted migration or deployment was performed by this integration task.
+The migration administrator must be able to create restricted roles and assign function owners. `private` must remain outside the Supabase Data API exposed schemas. Authenticated table writes and private command access stay denied. Public RPC execution uses the verified user's session and the restricted executor/writer roles. Hosted migrations and SQL smoke checks are recorded in [delivery verification](backend-delivery.md#hosted-database-verification). Application deployment remains separate.
 
 The adapter follows Supabase's [getUser reference](https://supabase.com/docs/reference/javascript/auth-getuser) and [RPC reference](https://supabase.com/docs/reference/javascript/rpc).
 

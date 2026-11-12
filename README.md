@@ -56,7 +56,7 @@ Use Node.js 22.18 or newer for the tests, which import TypeScript directly. Star
 The four HTTP tests check the Google login page, signed-out dashboard protection,
 and missing or denied OAuth callbacks. They use no Google account or session cookies. To test another
 running instance, set `TEST_BASE_URL` (default: `http://localhost:3000`).
-The same command also runs the pantry, inventory, expiration, API boundary, and signed-out API tests. Database suites create disposable PostgreSQL 18 clusters using `tests/helpers/postgres.mjs`; set `POSTGRES_BIN` if the binaries are outside `C:/Program Files/PostgreSQL/18/bin`. Hosted Supabase and signed-in HTTP behavior remain unverified.
+The same command also runs the pantry, inventory, expiration, API boundary, and signed-out API tests. Database suites create disposable PostgreSQL 18 clusters using `tests/helpers/postgres.mjs`; set `POSTGRES_BIN` if the binaries are outside `C:/Program Files/PostgreSQL/18/bin`. Hosted migrations and role-based SQL smoke checks passed; live Google sessions and signed-in HTTP behavior remain unverified. See [delivery verification](docs/backend-delivery.md#hosted-database-verification).
 
 ## Organization
 

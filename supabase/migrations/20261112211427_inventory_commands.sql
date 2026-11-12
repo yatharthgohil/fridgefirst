@@ -1,5 +1,10 @@
 begin;
 
+-- Hosted postgres needs temporary membership and schema privileges to transfer ownership.
+grant pantry_writer, pantry_executor to postgres with set true;
+grant create on schema private to pantry_writer;
+grant create on schema public to pantry_executor;
+
 create function private.inventory_adjust_command(p_request jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -76,5 +81,9 @@ revoke all on function private.inventory_adjust_command(jsonb),private.inventory
 grant execute on function private.inventory_adjust_command(jsonb),private.inventory_history_command(integer) to pantry_executor;
 revoke all on function public.inventory_adjust(jsonb),public.inventory_history(integer) from public,anon;
 grant execute on function public.inventory_adjust(jsonb),public.inventory_history(integer) to authenticated;
+
+revoke create on schema private from pantry_writer;
+revoke create on schema public from pantry_executor;
+revoke pantry_writer, pantry_executor from postgres granted by postgres;
 
 commit;
