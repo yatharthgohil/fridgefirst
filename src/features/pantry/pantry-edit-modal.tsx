@@ -13,8 +13,12 @@ export interface PantryEditModalProps {
 }
 
 export function PantryEditModal({ item, isOpen, onClose, onSave }: PantryEditModalProps) {
-  if (!item) return null;
+  if (!item || !isOpen) return null;
 
+  return <OpenPantryEditModal key={item.id} item={item} onClose={onClose} onSave={onSave} />;
+}
+
+function OpenPantryEditModal({ item, onClose, onSave }: Omit<PantryEditModalProps, "item" | "isOpen"> & { item: PantryItem }) {
   const [draft, setDraft] = useState<PantryItem>({ ...item });
 
   const handleSave = () => {
@@ -24,7 +28,7 @@ export function PantryEditModal({ item, isOpen, onClose, onSave }: PantryEditMod
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen
       onClose={onClose}
       className="pantry-edit-modal"
       titleId="pantry-edit-title"
