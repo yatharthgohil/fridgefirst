@@ -9,7 +9,7 @@ We are building a fully functional application: authenticated accounts, private 
 - **Source:** `../FridgeFirst_Design_Doc.docx`, titled *FridgeFirst Design Document*. The source also calls the application the “Smart Pantry” system; this reference uses **FridgeFirst** as the project name.
 - **Prepared:** October 6, 2026.
 - **Purpose:** Keep product intent, scope, technical layers, and important implementation constraints together for future development work and conversations.
-- **Status:** A minimal Next.js TypeScript scaffold now exists with Tailwind, lint/type-check/build scripts, the planned folder structure, a blank home page, and a basic health endpoint. Product features, Supabase integration, and AI integration remain unimplemented. The feature descriptions below represent the intended application.
+- **Status:** The Next.js scaffold includes a blank home page with a login/signup link, Google sign-in through Supabase Auth, a cookie-based OAuth callback/session flow, sign-out, and a server-protected dashboard placeholder. Supabase project keys and Google provider configuration are required to activate sign-in; see README.md. Supabase Auth stores accounts in its managed tables. Product database tables, storage, pantry features, and AI integration remain unimplemented. The feature descriptions below represent the intended application.
 - **Source requirements:** The product behavior, selected stack, initial ranking weights, and quality targets below come from the design document unless explicitly labeled otherwise.
 - **Updated team decision:** Use one Next.js application with TypeScript and Tailwind CSS, deployed on Vercel. Next.js replaces the original Vite frontend setup and Express API; Supabase remains the data platform. This decision supersedes the source document’s Vercel/Render deployment split.
 - **Suggested implementation:** Sections labeled **Recommended** add practical detail. They are proposals, not decisions already made by the team.
@@ -359,7 +359,7 @@ The application requires internet access and an available AI provider for AI-ass
 
 ## 15. Recommended repository organization
 
-Use a single Next.js project rather than separate frontend and Express projects. This folder layout is established in the starter scaffold; empty directories use `.gitkeep` placeholders. Only the root page/layout and a basic `api/health` route are implemented. Future feature pages, domain services, and integrations belong in the directories below.
+Use a single Next.js project rather than separate frontend and Express projects. This folder layout is established in the starter scaffold; empty directories use `.gitkeep` placeholders. The home page/layout, `api/health`, Google login, OAuth callback, session proxy, sign-out, and protected dashboard placeholder are implemented. Future feature pages, domain services, and integrations belong in the directories below.
 
 ```text
 fridgefirst/
