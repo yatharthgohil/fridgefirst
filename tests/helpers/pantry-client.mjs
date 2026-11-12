@@ -28,7 +28,7 @@ export async function seedUsers(sql) {
 }
 
 export async function heldCommand(sql, user, statement, name) {
-  const pending = sql(`set application_name='${name}'; ${session(user, `${statement}; select pg_sleep(1)`)}`);
+  const pending = sql(`set application_name='${name}'; ${session(user, `${statement}; select pg_sleep(2)`)}`);
   // The second connection starts only after the first command has acquired its locks.
   for (let attempt = 0; attempt < 200; attempt++) {
     if (await sql(`select exists(select 1 from pg_stat_activity where application_name='${name}' and wait_event='PgSleep')`) === 't') return { pending };
@@ -36,6 +36,20 @@ export async function heldCommand(sql, user, statement, name) {
   }
   await pending;
   assert.fail('First command did not reach its held transaction');
+}
+
+export async function scheduledRace(sql, first, second, label) {
+  const { pending } = await heldCommand(sql, alice, first, `${label}_first`);
+  const competitor = sql(`set application_name='${label}_second'; ${session(alice, second)}`);
+  let blocked = false;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    blocked = await sql(`select exists(select 1 from pg_stat_activity where application_name='${label}_second' and wait_event_type='Lock')`) === 't';
+    if (blocked) break;
+    await setTimeout(10);
+  }
+  const responses = await Promise.all([pending, competitor]);
+  assert.ok(blocked, 'Competing connection waited on the first transaction lock');
+  return responses.map(result);
 }
 
 export async function failureTrigger(sql, table, run) {
