@@ -45,9 +45,19 @@ The test runtime must be Node.js 22.18 or newer. On the development machine, Nod
 
 Two local tooling failures were corrected before the passing final run. A running local server held the SWC binary during `npm ci`; `npm install --ignore-scripts` repaired dependencies without stopping that server or changing the lockfile. Saved generated route types initially appeared under the audit directory and polluted lint. Moving them under Next.js's ignored cache corrected the check. Neither failure required an application change or a relaxed lint rule.
 
+## Hosted database verification
+
+On November 12, 2026, the Supabase MCP applied pantry commands, inventory commands, expiration references, and the hosted permissions correction to FridgeFirst (`valnsnmulmzikmpqljfh`, PostgreSQL 17). The foundation was already present. Migration history versions were aligned with the repository filenames after MCP assigned execution-time versions.
+
+Hosted ownership transfers require temporary `SET ROLE` membership and schema `CREATE` grants. The command migrations remove those grants before committing. Hosted `postgres` cannot grant custom roles access to the managed `auth` schema; the correction uses a private, invoker-security JWT claim reader following [Supabase's custom-role guidance](https://supabase.com/kb/troubleshooting/permission-errors-when-granting-custom-roles-access-to-the-auth-schema-9e32e7). Existing ownership policies still enforce RLS, and application roles receive no extra privileges. The local runner now removes custom-role Auth schema access before running behavior checks.
+
+A hosted transaction verified create, list, edit, consume, retry replay, delete, retained history, replay after deletion, and sourced expiration as `authenticated` with transaction-local user claims. The transaction, including its temporary Auth user, was rolled back. Catalog checks confirmed four references, RLS on all four tables, no anonymous RPC execution, no direct authenticated pantry writes or receipt reads, and no remaining temporary deployment grants.
+
+The security advisor reports the six intentional authenticated `SECURITY DEFINER` RPC wrappers and disabled leaked-password protection. The wrappers use restricted owners, an empty search path, private commands and ownership RLS. Password authentication is outside the implemented Google-only sign-in flow. See the [RPC advisory](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) and [password protection guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+
 ## Remaining integration limits
 
-No hosted migrations or deployment were performed. A role-capable migration administrator must apply the versioned SQL and keep the private schema outside the Data API exposed schemas. The local database bootstrap supplies test-only Auth stubs; it does not establish hosted Supabase behavior.
+The hosted database migrations are applied. No application deployment was performed. The local database bootstrap supplies test-only Auth stubs; the hosted SQL checks described above exercise actual Supabase roles with simulated request claims.
 
 Successful live Google login, refresh, sign-out, and signed-in HTTP requests through hosted Supabase remain unverified. The current dashboard still uses frontend fixtures. Amy and Samia's frontend tasks must connect the APIs, use UUID identifiers, format numeric quantities, and render unknown expiration explicitly. These limits are also described in [backend-api.md](backend-api.md).
 

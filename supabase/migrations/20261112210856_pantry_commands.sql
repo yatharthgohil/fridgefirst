@@ -1,5 +1,10 @@
 begin;
 
+-- Hosted postgres needs temporary membership and schema privileges to transfer ownership.
+grant pantry_writer, pantry_executor to postgres with set true;
+grant create on schema private to pantry_writer;
+grant create on schema public to pantry_executor;
+
 create function private.command_error(p_code text, p_message text) returns jsonb
 language sql immutable set search_path = '' as $$
   select jsonb_build_object('error',jsonb_build_object('code',p_code,'message',p_message));
@@ -174,5 +179,9 @@ grant execute on function private.pantry_create_command(jsonb),private.pantry_up
   private.pantry_delete_command(uuid,jsonb),private.pantry_list_command() to pantry_executor;
 revoke all on function public.pantry_create(jsonb),public.pantry_update(uuid,jsonb),public.pantry_delete(uuid,jsonb),public.pantry_list() from public,anon;
 grant execute on function public.pantry_create(jsonb),public.pantry_update(uuid,jsonb),public.pantry_delete(uuid,jsonb),public.pantry_list() to authenticated;
+
+revoke create on schema private from pantry_writer;
+revoke create on schema public from pantry_executor;
+revoke pantry_writer, pantry_executor from postgres granted by postgres;
 
 commit;

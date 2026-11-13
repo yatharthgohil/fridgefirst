@@ -47,6 +47,8 @@ export async function withPostgres(run) {
     for (const name of (await readdir(migrationDir)).filter((name) => name.endsWith('.sql')).sort()) {
       await sql(await readFile(join(migrationDir, name), 'utf8'));
     }
+    // Hosted postgres cannot grant auth schema access to custom roles.
+    await sql('revoke usage on schema auth from pantry_writer, pantry_executor');
     return await run({ sql, connectionArgs, command, root, port });
   } finally {
     if (startAttempted) {
