@@ -24,10 +24,12 @@
 .exp-tag { width: fit-content; padding: 1px 5px; border-radius: 4px; color: var(--muted); background: #f1f1ec; font-size: 7px; font-weight: 600; letter-spacing: .02em; }
 .exp-badge[data-source="override"] .exp-tag { color: #4a5f78; background: #e7eef3; }
 
-.exp-ok { color: var(--green); }
-.exp-ok .exp-dot { width: 7px; height: 7px; margin-top: 3px; background: #7b9b6b; }
+.exp-later { color: var(--green); }
+.exp-later .exp-dot { width: 7px; height: 7px; margin-top: 3px; background: #7b9b6b; }
 .exp-soon { color: #9a5a22; }
 .exp-soon .exp-dot { width: 7px; height: 7px; margin-top: 3px; background: var(--amber); }
+.exp-critical { color: #a3412f; }
+.exp-critical .exp-dot { width: 7px; height: 7px; margin-top: 3px; background: var(--red); }
 .exp-past { color: var(--red); }
 .exp-past .exp-dot { background: var(--red); }
 .exp-unknown { color: var(--muted); font-weight: 500; font-style: italic; }
@@ -38,7 +40,7 @@
 .exp-trigger.expiry:hover { border-color: var(--line); background: var(--white); }
 .exp-trigger.expiry i { width: auto; height: auto; border-radius: 0; }
 .exp-trigger.expiry i.exp-dot { width: 13px; height: 13px; border-radius: 50%; }
-.exp-trigger.expiry .exp-ok i.exp-dot, .exp-trigger.expiry .exp-soon i.exp-dot { width: 7px; height: 7px; }
+.exp-trigger.expiry .exp-later i.exp-dot, .exp-trigger.expiry .exp-soon i.exp-dot, .exp-trigger.expiry .exp-critical i.exp-dot { width: 7px; height: 7px; }
 
 /* ---- Details dialog ---- */
 .exp-dialog { width: min(400px, 100%); overflow: hidden; border-radius: 16px; background: var(--white); box-shadow: 0 25px 80px rgba(10,25,15,.25); animation: riseIn .2s ease; }
@@ -47,6 +49,8 @@
 .exp-dialog-body { display: grid; gap: 10px; padding: 16px 22px 18px; background: var(--paper); }
 .exp-dialog-body p { margin: 0; color: var(--ink); font-size: 11px; line-height: 1.55; }
 .exp-dialog-body .exp-badge { font-size: 11px; }
+.exp-dialog-body .exp-source { color: var(--muted); font-size: 10px; }
+.exp-dialog-body .exp-source a { color: var(--green); font-weight: 600; }
 .exp-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 13px 22px 16px; border-top: 1px solid var(--line); }
 .exp-dialog > footer .button { min-height: 38px; font-size: 11px; }
 

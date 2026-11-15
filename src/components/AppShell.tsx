@@ -29,7 +29,7 @@ import {
   PantryFilterBar,
   PantryNoMatches,
   usePantryFilters,
-  getExpiration,
+  getExpirationInfo,
   withFixtureExpiration,
   applyFixtureExpirationEdit,
   expirationFixtureItems,
@@ -137,7 +137,7 @@ export function AppShell({
   const pantryFilters = usePantryFilters(items);
 
   const renderExpiration = (item: PantryItem) => (
-    <ExpirationStatus item={item} expiration={getExpiration(item)} onEditItem={setEditingItem} />
+    <ExpirationStatus item={item} info={getExpirationInfo(item)} onEditItem={setEditingItem} />
   );
 
   // Handlers

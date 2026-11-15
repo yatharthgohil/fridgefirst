@@ -1,119 +1,88 @@
 /**
- * FIXTURE ONLY — stands in for the backend expiration/urgency module until it
- * exists. It produces `ExpirationMeta` exactly as the contract describes so
- * the badges and filters can be built and tested now. The threshold and
- * reference table below are placeholders; the real rules (team decision,
- * PROJECT_CONTEXT.md §9/§17) belong to the backend. Delete this file's use in
- * AppShell once pantry items arrive from the API with `expiration` attached.
+ * TEMPORARY demo data until AppShell loads items from GET /api/pantry (next
+ * PR). Builds `expiration` results in the shape of src/contracts/pantry.ts and
+ * gets `urgency` from the backend's own pure policy, so no urgency rule is
+ * re-implemented here. Delete this file once the dashboard uses the API.
  */
-import type { ExpirationMeta, ExpirationSource, ShelfLifeReferenceSummary } from "@/contracts/expiration";
-import type { PantryItem } from "./types";
+import type { CalendarDate } from "@/contracts/common";
+import type { ExpirationProvenance, ExpirationResult } from "@/contracts/pantry";
+import { expirationUrgency } from "@/server/modules/expiration/policy";
+import type { ExpirationInfo, PantryItem } from "./types";
 
 /** The dashboard mock data is written as if today were this date. */
-export const FIXTURE_TODAY = "2025-05-19";
-/** Placeholder: matches the dashboard's existing "soon" tier (≤ 4 days). */
-const FIXTURE_EXPIRING_SOON_DAYS = 4;
+export const FIXTURE_TODAY: CalendarDate = "2025-05-19";
 
-const FIXTURE_REFERENCES: Record<string, Omit<ShelfLifeReferenceSummary, "storage">> = {
-  leaf: { name: "Leafy greens", shelfLifeDays: 6 },
-  yogurt: { name: "Yogurt", shelfLifeDays: 10 },
-  broccoli: { name: "Broccoli", shelfLifeDays: 7 },
-  chickpeas: { name: "Canned beans", shelfLifeDays: 365 },
-  apple: { name: "Apples", shelfLifeDays: 21 },
+const DEMO_SOURCE = {
+  sourceName: "Demo data (not food guidance)",
+  sourceUrl: "https://example.com/fridgefirst-demo",
+  sourceAccessedOn: "2025-05-01",
+} as const;
+
+const DEMO_REFERENCES: Record<string, { foodName: string; days: number; assumptions: string }> = {
+  leaf: { foodName: "Leafy greens", days: 6, assumptions: "Unwashed, refrigerated in original packaging." },
+  yogurt: { foodName: "Yogurt", days: 10, assumptions: "Unopened, refrigerated." },
+  broccoli: { foodName: "Broccoli", days: 7, assumptions: "Whole heads, refrigerated." },
+  chickpeas: { foodName: "Canned beans", days: 365, assumptions: "Unopened can, cool and dry." },
+  apple: { foodName: "Apples", days: 21, assumptions: "Whole fruit." },
 };
 
-function dayNumber(date: string): number {
-  const [year, month, day] = date.split("-").map(Number);
-  return Date.UTC(year, month - 1, day) / 86_400_000;
-}
-
-export function buildFixtureExpiration(
-  date: string | null,
-  source: Exclude<ExpirationSource, "unknown">,
-  options: { today?: string; reference?: ShelfLifeReferenceSummary | null; overriddenAt?: string | null } = {},
-): ExpirationMeta {
-  if (!date || Number.isNaN(dayNumber(date))) {
-    return { date: null, source: "unknown", status: "unknown", daysUntil: null, reference: null };
-  }
-  const daysUntil = Math.round(dayNumber(date) - dayNumber(options.today ?? FIXTURE_TODAY));
-  const status = daysUntil < 0 ? "past" : daysUntil <= FIXTURE_EXPIRING_SOON_DAYS ? "expiring_soon" : "ok";
+function demoProvenance(item: PantryItem): ExpirationProvenance {
+  const reference = DEMO_REFERENCES[item.icon] ?? { foodName: item.name, days: 7, assumptions: "Typical storage." };
   return {
-    date,
-    source,
-    status,
-    daysUntil,
-    reference: source === "estimated" ? options.reference ?? null : null,
-    overriddenAt: source === "override" ? options.overriddenAt ?? null : null,
+    referenceId: "00000000-0000-4000-8000-000000000999",
+    storageLocation: item.location,
+    ...reference,
+    ...DEMO_SOURCE,
   };
 }
 
-function referenceFor(item: PantryItem): ShelfLifeReferenceSummary | null {
-  const reference = FIXTURE_REFERENCES[item.icon];
-  return reference ? { ...reference, storage: item.location } : null;
+export function fixtureInfo(expiration: ExpirationResult, today: CalendarDate = FIXTURE_TODAY): ExpirationInfo {
+  return { expiration, urgency: expirationUrgency(expiration, today) };
 }
 
-/** Attaches estimated (or unknown) expiration metadata, as the backend would on load. */
-export function withFixtureExpiration(item: PantryItem, today: string = FIXTURE_TODAY): PantryItem {
-  if (item.expiration) return item;
-  return {
-    ...item,
-    expiration: buildFixtureExpiration(item.expirationDate || null, "estimated", { today, reference: referenceFor(item) }),
-  };
+/** Attaches an estimate (or unknown) to a mock item, as the API would on load. */
+export function withFixtureExpiration(item: PantryItem, today: CalendarDate = FIXTURE_TODAY): PantryItem {
+  if (item.expirationInfo) return item;
+  const expiration: ExpirationResult = item.expirationDate
+    ? { kind: "estimate", date: item.expirationDate, provenance: demoProvenance(item) }
+    : { kind: "unknown", date: null, reason: "no_match" };
+  return { ...item, expirationInfo: fixtureInfo(expiration, today) };
 }
 
 /**
- * Mirrors the backend's handling of an item edit: a changed date becomes a
- * user override (or unknown when cleared); otherwise the source is kept.
+ * Mirrors the API's handling of an edit (docs/backend-expiration.md): a changed
+ * date becomes an override, a cleared date becomes unknown/user_cleared, and
+ * an unchanged date keeps its current result.
  */
 export function applyFixtureExpirationEdit(
   previous: PantryItem,
   updated: PantryItem,
-  options: { today?: string; now?: Date } = {},
+  today: CalendarDate = FIXTURE_TODAY,
 ): PantryItem {
   const date = updated.expirationDate || null;
-  const before = previous.expiration;
-  const dateChanged = date !== (previous.expirationDate || null);
-  const locationChanged = updated.location !== previous.location;
-
-  let expiration: ExpirationMeta;
-  if (!dateChanged && before && before.source === "override") {
-    expiration = buildFixtureExpiration(date, "override", { today: options.today, overriddenAt: before.overriddenAt });
-  } else if (!dateChanged && !locationChanged && before) {
-    expiration = before;
-  } else if (!dateChanged) {
-    // Storage moved: the backend re-estimates using the new storage condition.
-    expiration = buildFixtureExpiration(date, "estimated", { today: options.today, reference: referenceFor(updated) });
-  } else {
-    expiration = buildFixtureExpiration(date, "override", {
-      today: options.today,
-      overriddenAt: (options.now ?? new Date()).toISOString(),
-    });
-  }
-  return { ...updated, expiration };
+  const current = previous.expirationInfo?.expiration;
+  if (current && date === current.date) return { ...updated, expirationInfo: previous.expirationInfo };
+  const expiration: ExpirationResult =
+    date === null ? { kind: "unknown", date: null, reason: "user_cleared" } : { kind: "override", date };
+  return { ...updated, expirationInfo: fixtureInfo(expiration, today) };
 }
 
-/** Extra dashboard items covering the date states the base mock data lacks. */
+const base = { expiry: "", urgency: "fresh", amount: 80, quantity: "1" } as const;
+
+/** Extra demo items covering the date states the base mock data lacks. */
 export const expirationFixtureItems: PantryItem[] = [
-  { id: 101, name: "Leftover chili", quantity: "2", unit: "portion", location: "Fridge", expirationDate: "", expiry: "", urgency: "fresh", icon: "chickpeas", amount: 70, added: "May 17" },
-  { id: 102, name: "Sour cream", quantity: "0.5", unit: "tub", location: "Fridge", expirationDate: "2025-05-17", expiry: "", urgency: "critical", icon: "yogurt", amount: 40, added: "May 6" },
+  { ...base, id: 101, name: "Leftover chili", quantity: "2", unit: "portion", location: "Fridge", expirationDate: "", icon: "chickpeas", added: "May 17" },
+  { ...base, id: 102, name: "Sour cream", quantity: "0.5", unit: "tub", location: "Fridge", expirationDate: "2025-05-17", icon: "yogurt", added: "May 6" },
   {
-    id: 103, name: "Hummus", quantity: "1", unit: "tub", location: "Fridge", expirationDate: "2025-05-21", expiry: "", urgency: "soon", icon: "chickpeas", amount: 90, added: "May 15",
-    expiration: buildFixtureExpiration("2025-05-21", "override", { overriddenAt: "2025-05-15T18:20:00.000Z" }),
+    ...base, id: 103, name: "Hummus", unit: "tub", location: "Fridge", expirationDate: "2025-05-21", icon: "chickpeas", added: "May 15",
+    expirationInfo: fixtureInfo({ kind: "override", date: "2025-05-21" }),
   },
   {
-    id: 104, name: "Fresh basil", quantity: "1", unit: "bunch", location: "Counter", expirationDate: "2025-05-18", expiry: "", urgency: "critical", icon: "leaf", amount: 30, added: "May 14",
-    expiration: buildFixtureExpiration("2025-05-18", "override", { overriddenAt: "2025-05-14T09:00:00.000Z" }),
+    ...base, id: 104, name: "Fresh basil", unit: "bunch", location: "Counter", expirationDate: "2025-05-18", icon: "leaf", added: "May 14",
+    expirationInfo: fixtureInfo({ kind: "override", date: "2025-05-18" }),
+  },
+  {
+    ...base, id: 105, name: "Cooked rice", unit: "portion", location: "Fridge", expirationDate: "", icon: "chickpeas", added: "May 16",
+    expirationInfo: fixtureInfo({ kind: "unknown", date: null, reason: "user_cleared" }),
   },
 ];
-
-/** One metadata example per display state, for tests and visual checks. */
-export const expirationMetaFixtures = {
-  unknown: buildFixtureExpiration(null, "estimated"),
-  pastEstimated: buildFixtureExpiration("2025-05-17", "estimated", { reference: { name: "Sour cream", storage: "Fridge", shelfLifeDays: 14 } }),
-  pastOverride: buildFixtureExpiration("2025-05-18", "override", { overriddenAt: "2025-05-14T09:00:00.000Z" }),
-  today: buildFixtureExpiration("2025-05-19", "estimated"),
-  tomorrow: buildFixtureExpiration("2025-05-20", "estimated"),
-  soonOverride: buildFixtureExpiration("2025-05-21", "override", { overriddenAt: "2025-05-15T18:20:00.000Z" }),
-  okEstimated: buildFixtureExpiration("2025-05-28", "estimated", { reference: { name: "Yogurt", storage: "Fridge", shelfLifeDays: 10 } }),
-  farEstimated: buildFixtureExpiration("2026-01-19", "estimated"),
-} satisfies Record<string, ExpirationMeta>;

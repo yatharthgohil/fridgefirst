@@ -1,14 +1,29 @@
 /**
- * Pure pantry list filtering and sorting. Expiration status always comes from
- * backend metadata (see getExpiration); no urgency thresholds live here.
+ * Pure pantry list filtering and sorting. Urgency always comes from the
+ * pantry API (see getExpirationInfo); no urgency thresholds live here.
  */
-import { getExpiration } from "./expiration-display";
+import type { Urgency } from "@/contracts/pantry";
+import { getExpirationInfo } from "./expiration-display";
 import type { PantryItem, StorageLocation } from "./types";
 
 export const STORAGE_LOCATIONS: StorageLocation[] = ["Fridge", "Freezer", "Pantry", "Counter"];
 
 /** Expiration filters a user can toggle. Several selected = match any of them. */
 export type ExpirationFilter = "expiring_soon" | "past" | "unknown";
+
+/** Which backend urgency kinds each filter shows ("later" has no filter). */
+const FILTER_URGENCY: Record<ExpirationFilter, Urgency["kind"][]> = {
+  expiring_soon: ["critical", "soon"],
+  past: ["past_date"],
+  unknown: ["unknown"],
+};
+
+function filterFor(kind: Urgency["kind"]): ExpirationFilter | null {
+  for (const [filter, kinds] of Object.entries(FILTER_URGENCY)) {
+    if (kinds.includes(kind)) return filter as ExpirationFilter;
+  }
+  return null;
+}
 export const EXPIRATION_FILTERS: { value: ExpirationFilter; label: string }[] = [
   { value: "expiring_soon", label: "Expiring soon" },
   { value: "past", label: "Past date" },
@@ -65,8 +80,8 @@ function matchesBase(item: PantryItem, state: PantryFilterState): boolean {
 
 function matchesExpiration(item: PantryItem, filters: ExpirationFilter[]): boolean {
   if (filters.length === 0) return true;
-  const status = getExpiration(item).status;
-  return filters.includes(status as ExpirationFilter);
+  const filter = filterFor(getExpirationInfo(item).urgency.kind);
+  return filter !== null && filters.includes(filter);
 }
 
 /** Search AND location AND (any selected expiration filter). */
@@ -85,8 +100,8 @@ export function countByExpirationFilter(
   const counts: Record<ExpirationFilter, number> = { expiring_soon: 0, past: 0, unknown: 0 };
   for (const item of items) {
     if (!matchesBase(item, state)) continue;
-    const status = getExpiration(item).status;
-    if (status in counts) counts[status as ExpirationFilter] += 1;
+    const filter = filterFor(getExpirationInfo(item).urgency.kind);
+    if (filter) counts[filter] += 1;
   }
   return counts;
 }
@@ -94,19 +109,29 @@ export function countByExpirationFilter(
 function compareNameThenId(a: PantryItem, b: PantryItem): number {
   const byName = a.name.localeCompare(b.name, "en", { sensitivity: "base" });
   if (byName !== 0) return byName;
-  return String(a.id).localeCompare(String(b.id), "en", { numeric: true });
+  return compareIds(a, b);
 }
 
-/** Contract order (EXPIRATION_SORT_RULE): date asc, unknown last, then name, then id. */
+function compareIds(a: PantryItem, b: PantryItem): number {
+  const left = String(a.id);
+  const right = String(b.id);
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/**
+ * Same order as the API's list (compareBySoonestExpiration in
+ * src/server/modules/expiration/policy.ts): date ascending, unknown dates
+ * last, ties by id. Keeps the order stable after local edits.
+ */
 export function compareByExpiration(a: PantryItem, b: PantryItem): number {
-  const dateA = getExpiration(a).date;
-  const dateB = getExpiration(b).date;
+  const dateA = getExpirationInfo(a).expiration.date;
+  const dateB = getExpirationInfo(b).expiration.date;
   if (dateA !== dateB) {
     if (dateA === null) return 1;
     if (dateB === null) return -1;
     return dateA < dateB ? -1 : 1;
   }
-  return compareNameThenId(a, b);
+  return compareIds(a, b);
 }
 
 export function sortPantryItems(items: PantryItem[], sort: PantrySort): PantryItem[] {

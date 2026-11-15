@@ -2,15 +2,15 @@
 
 import React, { useId, useRef, useState } from "react";
 import { Button, Icon, Modal } from "@/components";
-import type { ExpirationMeta } from "@/contracts/expiration";
 import { describeExpiration, explainExpiration, formatCalendarDate } from "./expiration-display";
-import type { PantryItem } from "./types";
+import type { ExpirationInfo, PantryItem } from "./types";
 import "./expiration.css";
 
-const TONE_SYMBOL: Record<string, string> = { unknown: "?", past: "!", soon: "", ok: "" };
+const TONE_SYMBOL: Record<string, string> = { unknown: "?", past: "!", critical: "", soon: "", later: "" };
 
 export interface ExpirationBadgeProps {
-  expiration: ExpirationMeta;
+  /** `expiration` + `urgency` from the pantry API. */
+  info: ExpirationInfo;
   className?: string;
 }
 
@@ -18,14 +18,14 @@ export interface ExpirationBadgeProps {
  * Text-labelled expiration badge. Status and source are always written out,
  * so meaning never depends on color alone.
  */
-export function ExpirationBadge({ expiration, className = "" }: ExpirationBadgeProps) {
-  const display = describeExpiration(expiration);
+export function ExpirationBadge({ info, className = "" }: ExpirationBadgeProps) {
+  const display = describeExpiration(info);
   return (
     <span
       className={`exp-badge exp-${display.tone} ${className}`.trim()}
       title={display.description}
-      data-status={expiration.status}
-      data-source={expiration.source}
+      data-urgency={info.urgency.kind}
+      data-source={info.expiration.kind}
     >
       <i className="exp-dot" aria-hidden="true">
         {TONE_SYMBOL[display.tone]}
@@ -41,7 +41,7 @@ export function ExpirationBadge({ expiration, className = "" }: ExpirationBadgeP
 
 export interface ExpirationStatusProps {
   item: PantryItem;
-  expiration: ExpirationMeta;
+  info: ExpirationInfo;
   /** Opens the item editor (Amy's PantryEditModal). Shown as "Change date". */
   onEditItem?: (item: PantryItem) => void;
 }
@@ -50,10 +50,10 @@ export interface ExpirationStatusProps {
  * Badge that opens an explanation of where the date came from, with an
  * action into the item editor to change or add the date.
  */
-export function ExpirationStatus({ item, expiration, onEditItem }: ExpirationStatusProps) {
+export function ExpirationStatus({ item, info, onEditItem }: ExpirationStatusProps) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement | null>(null);
-  const display = describeExpiration(expiration);
+  const display = describeExpiration(info);
 
   const close = (restoreFocus = true) => {
     setOpen(false);
@@ -73,12 +73,12 @@ export function ExpirationStatus({ item, expiration, onEditItem }: ExpirationSta
         aria-haspopup="dialog"
         aria-label={`${item.name}: ${display.description} Show date details`}
       >
-        <ExpirationBadge expiration={expiration} />
+        <ExpirationBadge info={info} />
       </button>
       {open && (
         <ExpirationDetailsDialog
           item={item}
-          expiration={expiration}
+          info={info}
           onClose={() => close()}
           onEdit={
             onEditItem
@@ -96,22 +96,23 @@ export function ExpirationStatus({ item, expiration, onEditItem }: ExpirationSta
 
 function ExpirationDetailsDialog({
   item,
-  expiration,
+  info,
   onClose,
   onEdit,
 }: {
   item: PantryItem;
-  expiration: ExpirationMeta;
+  info: ExpirationInfo;
   onClose: () => void;
   onEdit?: () => void;
 }) {
   const titleId = useId();
-  const lines = explainExpiration(expiration);
-  const unknown = expiration.date === null;
+  const { expiration, urgency } = info;
+  const { lines, source } = explainExpiration(expiration, urgency);
+  const unknown = expiration.kind === "unknown";
   const heading =
-    expiration.date === null
+    expiration.kind === "unknown"
       ? "No date"
-      : `${expiration.source === "override" ? "Your date" : "Estimated date"}: ${formatCalendarDate(expiration.date)}`;
+      : `${expiration.kind === "override" ? "Your date" : "Estimated date"}: ${formatCalendarDate(expiration.date)}`;
 
   return (
     <Modal isOpen onClose={onClose} className="exp-dialog" titleId={titleId}>
@@ -125,10 +126,19 @@ function ExpirationDetailsDialog({
         </Button>
       </header>
       <div className="exp-dialog-body">
-        <ExpirationBadge expiration={expiration} />
+        <ExpirationBadge info={info} />
         {lines.map((line) => (
           <p key={line}>{line}</p>
         ))}
+        {source && (
+          <p className="exp-source">
+            Source:{" "}
+            <a href={source.url} target="_blank" rel="noopener noreferrer">
+              {source.name}
+              <span className="visually-hidden"> (opens in a new tab)</span>
+            </a>
+          </p>
+        )}
       </div>
       <footer>
         <Button variant="secondary" onClick={onClose}>
