@@ -14,16 +14,11 @@ export interface PantryEditModalProps {
 
 export function PantryEditModal({ item, isOpen, onClose, onSave }: PantryEditModalProps) {
   if (!item || !isOpen) return null;
-  // Keyed so hooks run unconditionally and each opened item gets a fresh draft.
-  return <PantryEditForm key={item.id} item={item} onClose={onClose} onSave={onSave} />;
+
+  return <OpenPantryEditModal key={item.id} item={item} onClose={onClose} onSave={onSave} />;
 }
 
-function PantryEditForm({
-  item,
-  onClose,
-  onSave,
-}: Omit<PantryEditModalProps, "item" | "isOpen"> & { item: PantryItem }) {
-  const isOpen = true;
+function OpenPantryEditModal({ item, onClose, onSave }: Omit<PantryEditModalProps, "item" | "isOpen"> & { item: PantryItem }) {
   const [draft, setDraft] = useState<PantryItem>({ ...item });
 
   const handleSave = () => {
@@ -33,7 +28,7 @@ function PantryEditForm({
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen
       onClose={onClose}
       className="pantry-edit-modal"
       titleId="pantry-edit-title"

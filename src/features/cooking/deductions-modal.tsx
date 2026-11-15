@@ -20,6 +20,14 @@ export function DeductionsModal({
 }: DeductionsModalProps) {
   if (!isOpen) return null;
 
+  return <OpenDeductionsModal deductions={initialDeductions} onClose={onClose} onConfirm={onConfirm} />;
+}
+
+function OpenDeductionsModal({
+  deductions: initialDeductions,
+  onClose,
+  onConfirm,
+}: Omit<DeductionsModalProps, "isOpen">) {
   const [deductions, setDeductions] = useState<PantryDeduction[]>([...initialDeductions]);
 
   return (
