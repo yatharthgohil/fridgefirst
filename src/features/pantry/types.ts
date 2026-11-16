@@ -1,3 +1,5 @@
+import type { ExpirationResult, Urgency } from "@/contracts/pantry";
+
 export type UrgencyLevel = "critical" | "soon" | "fresh";
 
 export type StorageLocation = "Fridge" | "Freezer" | "Pantry" | "Counter";
@@ -15,6 +17,16 @@ export interface PantryItem {
   amount: number;
   added: string;
   note?: string;
+  /**
+   * Expiration result and urgency exactly as returned by the pantry API
+   * (`src/contracts/pantry.ts`). Expiration badges and filters read only this.
+   */
+  expirationInfo?: ExpirationInfo;
+}
+
+export interface ExpirationInfo {
+  expiration: ExpirationResult;
+  urgency: Urgency;
 }
 
 export interface UnitOption {
