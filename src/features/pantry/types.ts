@@ -1,11 +1,12 @@
 import type { ExpirationResult, Urgency } from "@/contracts/pantry";
+import type { Unit } from "@/contracts/common";
 
 export type UrgencyLevel = "critical" | "soon" | "fresh";
 
 export type StorageLocation = "Fridge" | "Freezer" | "Pantry" | "Counter";
 
 export interface PantryItem {
-  id: number;
+  id: number | string;
   name: string;
   quantity: string;
   unit: string;
@@ -17,12 +18,32 @@ export interface PantryItem {
   amount: number;
   added: string;
   note?: string;
+  version?: number;
+  addedOn?: string;
+  notes?: string | null;
   /**
    * Expiration result and urgency exactly as returned by the pantry API
    * (`src/contracts/pantry.ts`). Expiration badges and filters read only this.
    */
   expirationInfo?: ExpirationInfo;
 }
+
+export type ExpirationFormKind = "estimate" | "override" | "unknown";
+
+export interface PantryFormValues {
+  name: string;
+  quantity: string;
+  unit: Unit;
+  storageLocation: StorageLocation;
+  addedOn: string;
+  expirationKind: ExpirationFormKind;
+  expirationDate: string;
+  notes: string;
+}
+
+export type PantryFormField = keyof PantryFormValues | "general";
+
+export type PantryFormErrors = Partial<Record<PantryFormField, string>>;
 
 export interface ExpirationInfo {
   expiration: ExpirationResult;

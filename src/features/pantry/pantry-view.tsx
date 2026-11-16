@@ -6,11 +6,12 @@ import { PantryItem, formatUnit } from "./types";
 
 export interface PantryViewProps {
   items: PantryItem[];
+  onAddItem?: () => void;
   onAddGroceries?: () => void;
   onEditItem?: (item: PantryItem) => void;
   onDeleteItem?: (item: PantryItem) => void;
-  notes?: Record<number, string>;
-  onUpdateNote?: (id: number, note: string) => void;
+  notes?: Record<string | number, string>;
+  onUpdateNote?: (id: string | number, note: string) => void;
   /** Slot rendered first in each row's action area (e.g. consume/discard controls). */
   renderItemActions?: (item: PantryItem) => React.ReactNode;
   /** Slot replacing the default expiry badge in each row. */
@@ -28,6 +29,7 @@ export interface PantryViewProps {
 
 export function PantryView({
   items,
+  onAddItem,
   onAddGroceries,
   onEditItem,
   onDeleteItem,
@@ -40,7 +42,7 @@ export function PantryView({
   const [filter, setFilter] = useState("All");
   const [pantrySort, setPantrySort] = useState("expiration");
   const [query, setQuery] = useState("");
-  const [expandedNoteId, setExpandedNoteId] = useState<number | null>(null);
+  const [expandedNoteId, setExpandedNoteId] = useState<string | number | null>(null);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -60,7 +62,10 @@ export function PantryView({
   const sortedPantryItems = useMemo(() => {
     return [...filteredItems].sort((a, b) => {
       if (pantrySort === "alphabetical") return a.name.localeCompare(b.name);
-      if (pantrySort === "added") return b.id - a.id;
+      if (pantrySort === "added") {
+        if (typeof a.id === "number" && typeof b.id === "number") return b.id - a.id;
+        return String(b.id).localeCompare(String(a.id));
+      }
       return a.expirationDate.localeCompare(b.expirationDate);
     });
   }, [filteredItems, pantrySort]);
@@ -79,11 +84,18 @@ export function PantryView({
           <h1>My pantry</h1>
           <p>Keep track of what you have and use it while it’s fresh.</p>
         </div>
-        {onAddGroceries && (
-          <Button onClick={onAddGroceries}>
-            <Icon name="plus" size={18} /> Add groceries
-          </Button>
-        )}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+          {onAddItem && (
+            <Button variant="secondary" onClick={onAddItem}>
+              <Icon name="plus" size={18} /> Add item
+            </Button>
+          )}
+          {onAddGroceries && (
+            <Button onClick={onAddGroceries}>
+              <Icon name="camera" size={18} /> Add from photo
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="pantry-summary-grid">
@@ -178,7 +190,8 @@ export function PantryView({
 
         <div className="inventory-rows">
           {rows.map((item) => {
-            const hasNote = Boolean(notes[item.id]?.trim());
+            const itemNote = notes[item.id] !== undefined ? notes[item.id] : (item.notes ?? item.note ?? "");
+            const hasNote = Boolean(itemNote?.trim());
             const noteIsExpanded = expandedNoteId === item.id;
             return (
               <Fragment key={item.id}>
@@ -252,7 +265,7 @@ export function PantryView({
                       </div>
                     </div>
                     <textarea
-                      value={notes[item.id] || ""}
+                      value={itemNote}
                       onChange={(e) => onUpdateNote?.(item.id, e.target.value)}
                       placeholder="Add a note..."
                       maxLength={240}
@@ -260,7 +273,7 @@ export function PantryView({
                       autoFocus
                     />
                     <div className="item-note-footer">
-                      <span>{(notes[item.id] || "").length}/240</span>
+                      <span>{itemNote.length}/240</span>
                       <Button
                         variant="secondary"
                         onClick={() => setExpandedNoteId(null)}

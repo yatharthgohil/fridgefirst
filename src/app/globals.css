@@ -135,6 +135,7 @@ h1 { margin: 6px 0 5px; font-family: "Fraunces", serif; font-size: clamp(30px, 3
 .pantry-list { border-top: 1px solid var(--line); }
 .pantry-row { min-height: 65px; display: grid; grid-template-columns: 45px minmax(120px,1.5fr) minmax(100px,1fr) 100px 28px; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); }
 .food-thumb { width: 39px; height: 39px; border-radius: 10px; background: var(--cream); position: relative; overflow: hidden; flex: 0 0 auto; }
+.food-icon { display: block; width: 100%; height: 100%; position: absolute; inset: 0; }
 .item-info strong, .item-info span { display: block; }
 .item-info strong { font-size: 11px; }
 .item-info span { color: var(--muted); font-size: 9px; margin-top: 3px; }

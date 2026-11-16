@@ -137,7 +137,12 @@ export function compareByExpiration(a: PantryItem, b: PantryItem): number {
 export function sortPantryItems(items: PantryItem[], sort: PantrySort): PantryItem[] {
   const sorted = [...items];
   if (sort === "name") return sorted.sort(compareNameThenId);
-  if (sort === "added") return sorted.sort((a, b) => b.id - a.id);
+  if (sort === "added") {
+    return sorted.sort((a, b) => {
+      if (typeof a.id === "number" && typeof b.id === "number") return b.id - a.id;
+      return String(b.id).localeCompare(String(a.id));
+    });
+  }
   return sorted.sort(compareByExpiration);
 }
 

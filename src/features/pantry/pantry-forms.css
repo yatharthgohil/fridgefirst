@@ -1,0 +1,243 @@
+/*
+ * Styling for pantry manual add/edit forms and delete confirmation modal.
+ * Built using design tokens from globals.css.
+ */
+
+.pantry-form-modal {
+  width: min(580px, 100%);
+  max-height: min(90vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 17px;
+  background: var(--white);
+  box-shadow: 0 25px 80px rgba(10, 25, 15, 0.25);
+  animation: riseIn 0.24s ease;
+}
+
+.pantry-form-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 26px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+
+.pantry-form-header h2 {
+  margin: 4px 0 2px;
+  font-family: "Fraunces", serif;
+  font-size: 23px;
+  color: var(--ink);
+}
+
+.pantry-form-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pantry-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pantry-form-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 26px 22px;
+  background: var(--paper);
+  display: grid;
+  gap: 14px;
+}
+
+.pantry-alert-banner {
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pantry-alert-banner.error {
+  background: #fae8e3;
+  color: #923428;
+  border: 1px solid #f2cfc7;
+}
+
+.pantry-alert-banner.conflict {
+  background: #fff3e6;
+  color: #944b12;
+  border: 1px solid #f9dbc0;
+}
+
+.pantry-alert-banner strong {
+  display: block;
+  font-size: 12px;
+}
+
+.pantry-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pantry-form-grid .full-span {
+  grid-column: 1 / -1;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label,
+.form-fieldset legend {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 9px 11px;
+  outline: 0;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  font: inherit;
+  font-size: 11px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #9bb09d;
+  box-shadow: 0 0 0 3px var(--green-pale);
+}
+
+.form-group input[aria-invalid="true"],
+.form-group select[aria-invalid="true"],
+.form-group textarea[aria-invalid="true"] {
+  border-color: var(--red);
+  background: #fffbfa;
+}
+
+.field-error {
+  margin: 2px 0 0;
+  color: var(--red);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Expiration Mode Choices */
+.form-fieldset {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+}
+
+.expiration-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.expiration-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fafaf8;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.expiration-option:hover {
+  background: #f4f5f0;
+}
+
+.expiration-option.selected {
+  border-color: var(--green);
+  background: var(--green-pale);
+}
+
+.expiration-option input[type="radio"] {
+  margin-top: 2px;
+  accent-color: var(--green);
+}
+
+.expiration-option-content strong {
+  display: block;
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.expiration-option-content small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.override-date-picker {
+  margin-top: 8px;
+  padding-left: 24px;
+}
+
+.char-counter {
+  align-self: flex-end;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.pantry-form-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 26px;
+  border-top: 1px solid var(--line);
+  background: var(--white);
+}
+
+@media (max-width: 600px) {
+  .pantry-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .pantry-form-header {
+    padding: 18px 20px 14px;
+  }
+  .pantry-form-scroll {
+    padding: 14px 18px;
+  }
+  .pantry-form-footer {
+    padding: 12px 18px;
+  }
+}

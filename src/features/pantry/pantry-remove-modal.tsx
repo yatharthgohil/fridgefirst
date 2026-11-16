@@ -1,14 +1,16 @@
 "use client";
 
 import React from "react";
-import { Modal, Button, Icon } from "@/components";
-import { PantryItem } from "./types";
+import { PantryDeleteModal } from "./pantry-delete-modal";
+import type { PantryItem } from "./types";
 
 export interface PantryRemoveModalProps {
   item: PantryItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirmRemove: (item: PantryItem) => void;
+  onConfirmRemove?: (item: PantryItem) => void;
+  onConfirmDelete?: (itemId: string, expectedVersion: number) => Promise<void>;
+  onReloadLatest?: (item: PantryItem) => void;
 }
 
 export function PantryRemoveModal({
@@ -16,38 +18,26 @@ export function PantryRemoveModal({
   isOpen,
   onClose,
   onConfirmRemove,
+  onConfirmDelete,
+  onReloadLatest,
 }: PantryRemoveModalProps) {
-  if (!item) return null;
+  if (!isOpen || !item) return null;
+
+  const handleDelete = async (itemId: string, expectedVersion: number) => {
+    if (onConfirmDelete) {
+      await onConfirmDelete(itemId, expectedVersion);
+    } else if (onConfirmRemove) {
+      onConfirmRemove(item);
+    }
+  };
 
   return (
-    <Modal
+    <PantryDeleteModal
+      item={item}
       isOpen={isOpen}
       onClose={onClose}
-      className="remove-confirm-modal"
-      role="alertdialog"
-      titleId="remove-confirm-title"
-    >
-      <span className="remove-confirm-icon">
-        <Icon name="minus" size={22} />
-      </span>
-      <h2 id="remove-confirm-title">Remove {item.name}?</h2>
-      <p id="remove-confirm-description">
-        This item and its note will be removed from your pantry.
-      </p>
-      <div>
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          className="confirm-remove-button"
-          onClick={() => {
-            onConfirmRemove(item);
-            onClose();
-          }}
-        >
-          Remove item
-        </Button>
-      </div>
-    </Modal>
+      onConfirmDelete={handleDelete}
+      onReloadLatest={onReloadLatest}
+    />
   );
 }
