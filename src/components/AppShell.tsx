@@ -12,6 +12,12 @@ import {
   ActivityView,
   PantryEditModal,
   PantryRemoveModal,
+  PantryFormModal,
+  PantryDeleteModal,
+  createFixturePantryApi,
+  createHttpPantryApi,
+  FixturePantryApi,
+  contractToUiItem,
   PantryItem,
   initialPantryItems,
   initialActivityEvents,
@@ -35,6 +41,7 @@ import {
   expirationFixtureItems,
 } from "@/features/pantry";
 import type { InventoryAdjustmentResponse } from "@/contracts/inventory";
+import type { PantryCreateRequest, PantryUpdateRequest } from "@/contracts/pantry";
 
 import {
   RecipesView,
@@ -85,11 +92,12 @@ export function AppShell({
   // Core data states
   const [items, setItems] = useState<PantryItem[]>(initialItems);
   const [activity, setActivity] = useState<ActivityEvent[]>(initialActivityEvents);
-  const [notes, setNotes] = useState<Record<number, string>>({});
+  const [notes, setNotes] = useState<Record<string | number, string>>({});
   const [user, setUser] = useState<UserProfile>(initialUser);
   const [preferences, setPreferences] = useState<RecipePreferences>(defaultRecipePreferences);
 
   // Modal open states
+  const [addOpen, setAddOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [detectedGroceriesState, setDetectedGroceriesState] = useState<DetectedGrocery[]>(initialDetectedGroceries);
@@ -105,6 +113,13 @@ export function AppShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileDraft, setProfileDraft] = useState<UserProfile | null>(null);
 
+  // Pantry CRUD API: uses HTTP endpoints when connected to Supabase, in-memory fixtures otherwise.
+  const [pantryApi] = useState(() =>
+    typeof window !== "undefined" && Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL)
+      ? createHttpPantryApi()
+      : createFixturePantryApi({ items: initialItems })
+  );
+
   // Inventory API for consume/discard + history. Swap for createHttpInventoryApi()
   // once the atomic inventory endpoints exist; the components don't change.
   const [inventoryApi] = useState(() =>
@@ -112,10 +127,31 @@ export function AppShell({
   );
   const [activityRefresh, setActivityRefresh] = useState(0);
 
-  // Fixture only: mirror mock add/edit/delete into inventory history.
+  // When live database is connected, load real items from GET /api/pantry
+  useEffect(() => {
+    let cancelled = false;
+    if (typeof window !== "undefined" && Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL)) {
+      pantryApi
+        .list()
+        .then((res) => {
+          if (!cancelled && res.items) {
+            setItems(res.items.map(contractToUiItem));
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [pantryApi]);
+
+  // Fixture only: mirror mock add/edit/delete into inventory history and pantry store.
   useEffect(() => {
     inventoryApi.syncItems(items.map(toFixtureItem));
-  }, [inventoryApi, items]);
+    if ("syncItems" in pantryApi) {
+      (pantryApi as FixturePantryApi).syncItems(items);
+    }
+  }, [inventoryApi, pantryApi, items]);
 
   // Toast notice
   const [notice, setNotice] = useState<string | null>(null);
@@ -160,6 +196,108 @@ export function AppShell({
     );
   };
 
+  const handleAddPantryItem = async (request: PantryCreateRequest) => {
+    const response = await pantryApi.create(request);
+    const createdItem = contractToUiItem(response.item);
+    setItems((curr) => [createdItem, ...curr]);
+    if (createdItem.notes) {
+      setNotes((prev) => ({ ...prev, [createdItem.id]: createdItem.notes! }));
+    }
+    setActivity((curr) => [
+      {
+        id: Date.now(),
+        day: "Today",
+        time: "Just now",
+        type: "added",
+        title: `${createdItem.name} added`,
+        detail: `Added to ${createdItem.location}`,
+        meta: "Manual entry",
+        quantity: `+${createdItem.quantity} ${createdItem.unit}`,
+      },
+      ...curr,
+    ]);
+    setActivityRefresh((n) => n + 1);
+    flashNotice(`${createdItem.name} added to pantry`);
+  };
+
+  const handleEditPantryItem = async (itemId: string, request: PantryUpdateRequest) => {
+    const target = items.find((i) => String(i.id) === itemId);
+    const response = await pantryApi.update(itemId, request);
+    const updatedContract = response.item;
+    setItems((curr) =>
+      curr.map((item) => {
+        if (String(item.id) !== itemId) return item;
+        const converted = contractToUiItem(updatedContract);
+        return {
+          ...item,
+          ...converted,
+          id: item.id,
+          icon: item.icon || converted.icon,
+        };
+      })
+    );
+    if (updatedContract.notes !== undefined) {
+      setNotes((prev) => ({ ...prev, [itemId]: updatedContract.notes || "" }));
+    }
+
+    const quantityChanged = request.changes.quantity !== undefined && target && String(request.changes.quantity) !== String(target.quantity);
+    const locationChanged = request.changes.storageLocation !== undefined && target && request.changes.storageLocation !== target.location;
+
+    let detail = "Details updated in pantry";
+    if (quantityChanged && locationChanged && target) {
+      detail = `Quantity changed from ${target.quantity} ${target.unit} to ${updatedContract.quantity} ${updatedContract.unit} and moved to ${updatedContract.storageLocation}`;
+    } else if (quantityChanged && target) {
+      detail = `Quantity changed from ${target.quantity} ${target.unit} to ${updatedContract.quantity} ${updatedContract.unit}`;
+    } else if (locationChanged && target) {
+      detail = `Storage changed from ${target.location} to ${updatedContract.storageLocation}`;
+    }
+
+    setActivity((curr) => [
+      {
+        id: Date.now(),
+        day: "Today",
+        time: "Just now",
+        type: "adjusted",
+        title: `${updatedContract.name} adjusted`,
+        detail,
+        meta: "Manual adjustment",
+        quantity: `${updatedContract.quantity} ${updatedContract.unit}`,
+      },
+      ...curr,
+    ]);
+
+    setActivityRefresh((n) => n + 1);
+    flashNotice(`${updatedContract.name} updated`);
+  };
+
+  const handleDeletePantryItem = async (itemId: string, expectedVersion: number) => {
+    await pantryApi.delete(itemId, { expectedVersion });
+    const target = items.find((i) => String(i.id) === itemId);
+    setItems((curr) => curr.filter((item) => String(item.id) !== itemId));
+    setNotes((prev) => {
+      const copy = { ...prev };
+      delete copy[itemId];
+      return copy;
+    });
+    if (target) {
+      setActivity((curr) => [
+        {
+          id: Date.now(),
+          day: "Today",
+          time: "Just now",
+          type: "removed",
+          title: `${target.name} removed`,
+          detail: `Removed from ${target.location}`,
+          meta: "Manual adjustment",
+          quantity: `−${target.quantity} ${target.unit}`,
+        },
+        ...curr,
+      ]);
+    }
+    setActivityRefresh((n) => n + 1);
+    flashNotice(`${target?.name || "Item"} removed from pantry`);
+  };
+
   const handleSavePantryItem = (updated: PantryItem) => {
     const meta = calculateExpirationMeta(updated.expirationDate);
     setItems((curr) =>
@@ -192,8 +330,13 @@ export function AppShell({
     flashNotice(`${itemToRemove.name} removed from pantry`);
   };
 
-  const handleUpdateNote = (id: number, text: string) => {
+  const handleUpdateNote = (id: string | number, text: string) => {
     setNotes((prev) => ({ ...prev, [id]: text }));
+    setItems((curr) =>
+      curr.map((item) =>
+        String(item.id) === String(id) ? { ...item, notes: text } : item
+      )
+    );
   };
 
   const handlePhotosSelected = (_files: FileList | null) => {
@@ -306,6 +449,7 @@ export function AppShell({
           {activeNav === "My pantry" ? (
             <PantryView
               items={items}
+              onAddItem={() => setAddOpen(true)}
               onAddGroceries={() => setUploadOpen(true)}
               onEditItem={(item) => setEditingItem(item)}
               onDeleteItem={(item) => setPendingRemoval(item)}
@@ -383,18 +527,34 @@ export function AppShell({
         onConfirm={handleConfirmDetectedItems}
       />
 
-      <PantryEditModal
-        item={editingItem}
-        isOpen={Boolean(editingItem)}
-        onClose={() => setEditingItem(null)}
-        onSave={handleSavePantryItem}
+      <PantryFormModal
+        isOpen={addOpen}
+        mode="add"
+        onClose={() => setAddOpen(false)}
+        onSubmitAdd={handleAddPantryItem}
       />
 
-      <PantryRemoveModal
+      <PantryFormModal
+        isOpen={Boolean(editingItem)}
+        mode="edit"
+        item={editingItem}
+        onClose={() => setEditingItem(null)}
+        onSubmitEdit={handleEditPantryItem}
+        onReloadLatest={(latest) => {
+          const fresh = items.find((i) => String(i.id) === String(latest.id));
+          if (fresh) setEditingItem(fresh);
+        }}
+      />
+
+      <PantryDeleteModal
         item={pendingRemoval}
         isOpen={Boolean(pendingRemoval)}
         onClose={() => setPendingRemoval(null)}
-        onConfirmRemove={handleRemovePantryItem}
+        onConfirmDelete={handleDeletePantryItem}
+        onReloadLatest={(latest) => {
+          const fresh = items.find((i) => String(i.id) === String(latest.id));
+          if (fresh) setPendingRemoval(fresh);
+        }}
       />
 
       <RecipeDetailModal
