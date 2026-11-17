@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -22,6 +22,7 @@ import {
   initialActivityEvents,
   ActivityEvent,
   calculateExpirationMeta,
+  calculateEventRescuedKg,
   InventoryAdjustControls,
   RecentActivityPanel,
   createFixtureInventoryApi,
@@ -149,6 +150,7 @@ export function AppShell({
   const [user, setUser] = useState<UserProfile>(initialUser);
   const [preferences, setPreferences] = useState<RecipePreferences>(defaultRecipePreferences);
   const [monthlyGoalKg, setMonthlyGoalKg] = useState<number>(5.0);
+  const [measurementUnit, setMeasurementUnit] = useState<"Metric" | "US customary">("Metric");
 
   // Loading, error, and session states
   const [loadError, setLoadError] = useState<string | null>(initialPantryError ?? null);
@@ -302,6 +304,9 @@ export function AppShell({
           if (parsed.monthlyGoalKg && typeof parsed.monthlyGoalKg === "number") {
             setMonthlyGoalKg(parsed.monthlyGoalKg);
           }
+          if (parsed.measurementUnit === "Metric" || parsed.measurementUnit === "US customary") {
+            setMeasurementUnit(parsed.measurementUnit);
+          }
           if (parsed.name && typeof parsed.name === "string" && parsed.name.trim()) {
             setUser((prev) => ({ ...prev, name: parsed.name.trim() }));
           }
@@ -373,6 +378,9 @@ export function AppShell({
     setUser(updatedUser);
     if (data.monthlyGoalKg) {
       setMonthlyGoalKg(data.monthlyGoalKg);
+    }
+    if (data.measurementUnit) {
+      setMeasurementUnit(data.measurementUnit);
     }
     setPreferences((prev) => ({
       ...prev,
@@ -819,8 +827,19 @@ export function AppShell({
   };
 
   const cookedMealsCount = activity.filter((e) => e.type === "cooked").length;
-  // Food waste saved is tracked when meals are cooked (approx. 0.5 kg prevented per meal)
-  const monthlySavedKg = Math.round(cookedMealsCount * 0.5 * 10) / 10;
+  // Food waste saved is accurately calculated from consumed items and cooked meals
+  const monthlySavedKg = useMemo(() => {
+    const sum = activity.reduce((acc, event) => acc + calculateEventRescuedKg(event), 0);
+    return Math.round(sum * 10) / 10;
+  }, [activity]);
+
+  const isUS = measurementUnit === "US customary";
+  const savedAmountDisplay =
+    monthlySavedKg <= 0
+      ? isUS ? "0.0 lbs" : "0.0 kg"
+      : isUS
+      ? `${(monthlySavedKg * 2.20462).toFixed(1)} lbs`
+      : `${monthlySavedKg.toFixed(1)} kg`;
 
   if (showOnboarding) {
     return (
@@ -842,6 +861,7 @@ export function AppShell({
         monthlySavedKg={monthlySavedKg}
         monthlyGoalKg={monthlyGoalKg}
         mealsSavedCount={cookedMealsCount}
+        measurementUnit={measurementUnit}
         user={user}
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={onSignOut}
@@ -921,7 +941,7 @@ export function AppShell({
               onSelectRecipe={handleOpenRecipe}
             />
           ) : activeNav === "Activity" ? (
-            <ActivityView events={activity} />
+            <ActivityView events={activity} savedAmount={savedAmountDisplay} />
           ) : (
             <OverviewView
               userName={user.name.split(" ")[0]}
@@ -1034,7 +1054,25 @@ export function AppShell({
               JSON.stringify({ ...parsed, monthlyGoalKg: newGoal })
             );
           } catch {}
-          flashNotice(`Monthly target updated to ${newGoal.toFixed(1)} kg`);
+          flashNotice(
+            measurementUnit === "US customary"
+              ? `Monthly target updated to ${(newGoal * 2.20462).toFixed(1)} lbs`
+              : `Monthly target updated to ${newGoal.toFixed(1)} kg`
+          );
+        }}
+        measurementUnit={measurementUnit}
+        onMeasurementUnitChange={(newUnit) => {
+          setMeasurementUnit(newUnit);
+          const email = user?.email || initialUser?.email || "anonymous";
+          try {
+            const existing = localStorage.getItem(`ff_settings_${email}`);
+            const parsed = existing ? JSON.parse(existing) : {};
+            localStorage.setItem(
+              `ff_settings_${email}`,
+              JSON.stringify({ ...parsed, measurementUnit: newUnit })
+            );
+          } catch {}
+          flashNotice(`Measurement unit updated to ${newUnit}`);
         }}
         onRetakeOnboarding={() => {
           setSettingsOpen(false);

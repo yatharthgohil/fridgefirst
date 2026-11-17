@@ -9,7 +9,7 @@ export interface ActivityViewProps {
   savedAmount?: string;
 }
 
-export function ActivityView({ events, savedAmount = "3.2 kg" }: ActivityViewProps) {
+export function ActivityView({ events, savedAmount }: ActivityViewProps) {
   const [activityFilter, setActivityFilter] = useState("All");
 
   const filteredActivity = useMemo(() => {
@@ -31,10 +31,10 @@ export function ActivityView({ events, savedAmount = "3.2 kg" }: ActivityViewPro
     () => events.filter((e) => e.type === "adjusted" || e.type === "removed").length,
     [events]
   );
-  const rescuedAmount = useMemo(
-    () => (events.length === 0 ? "0.0 kg" : savedAmount),
-    [events, savedAmount]
-  );
+  const rescuedAmount = useMemo(() => {
+    if (savedAmount) return savedAmount;
+    return "0.0 kg";
+  }, [savedAmount]);
 
   const dayGroups = useMemo(() => {
     const ordered: { label: string; dateLabel: string }[] = [];

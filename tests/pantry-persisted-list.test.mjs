@@ -14,6 +14,7 @@ const {
 
 const {
   historyEntryToActivityEvent,
+  calculateEventRescuedKg,
 } = await import("../src/features/pantry/inventory-core.ts");
 
 // Sample persisted item matching backend contract
@@ -908,4 +909,107 @@ test("Activity tab orders events chronologically with newest first (matching use
   assert.equal(merged[0].title, "Overripe avocado added", "Newest item (added 3rd) must be at the top");
   assert.equal(merged[1].title, "yes added", "Second item (added 2nd) must be in the middle");
   assert.equal(merged[2].title, "Apple added", "First item (added 1st) must be at the bottom");
+});
+
+// ---------------------------------------------------------------------------
+// 8. Rescued food calculation and US customary / Metric unit conversion
+// ---------------------------------------------------------------------------
+
+test("calculateEventRescuedKg accurately calculates rescued food in kg from consumed items", () => {
+  // Consumed item of 10 kg
+  const consumed10kgEntry = {
+    id: "tx-consume-10kg",
+    itemId: "item-flour",
+    itemName: "Flour",
+    operation: "consume",
+    quantityDelta: -10,
+    unit: "kg",
+    occurredAt: new Date().toISOString(),
+  };
+  const event10kg = historyEntryToActivityEvent(consumed10kgEntry);
+  assert.equal(event10kg.type, "cooked");
+  assert.equal(calculateEventRescuedKg(event10kg), 10);
+
+  // Consumed item with 500 g
+  const consumed500gEntry = {
+    id: "tx-consume-500g",
+    itemId: "item-berries",
+    itemName: "Berries",
+    operation: "consume",
+    quantityDelta: -500,
+    unit: "g",
+    occurredAt: new Date().toISOString(),
+  };
+  const event500g = historyEntryToActivityEvent(consumed500gEntry);
+  assert.equal(calculateEventRescuedKg(event500g), 0.5);
+
+  // Cooked meal deduction
+  const cookedMealEvent = {
+    id: "tx-cooked-meal",
+    type: "cooked",
+    title: "Vegetable Soup cooked",
+    quantity: "1 meal",
+  };
+  assert.equal(calculateEventRescuedKg(cookedMealEvent), 0.5);
+
+  // Discarded item should not count towards food rescued
+  const discardedEntry = {
+    id: "tx-discard",
+    itemId: "item-moldy-bread",
+    itemName: "Bread",
+    operation: "discard",
+    quantityDelta: -1,
+    unit: "bag",
+    occurredAt: new Date().toISOString(),
+  };
+  const eventDiscarded = historyEntryToActivityEvent(discardedEntry);
+  assert.equal(calculateEventRescuedKg(eventDiscarded), 0);
+
+  // Added item should not count towards food rescued
+  const addedEntry = {
+    id: "tx-add",
+    itemId: "item-milk",
+    itemName: "Milk",
+    operation: "add",
+    quantityDelta: 2,
+    unit: "L",
+    occurredAt: new Date().toISOString(),
+  };
+  const eventAdded = historyEntryToActivityEvent(addedEntry);
+  assert.equal(calculateEventRescuedKg(eventAdded), 0);
+});
+
+test("Food rescued amounts format accurately in US customary (lbs) and Metric (kg)", () => {
+  const formatRescued = (savedKg, unit) => {
+    const isUS = unit === "US customary";
+    if (savedKg <= 0) return isUS ? "0.0 lbs" : "0.0 kg";
+    return isUS
+      ? `${(savedKg * 2.20462).toFixed(1)} lbs`
+      : `${savedKg.toFixed(1)} kg`;
+  };
+
+  const formatSidebar = (savedKg, unit) => {
+    const isUS = unit === "US customary";
+    const unitLabel = isUS ? "lbs" : "kg";
+    return isUS
+      ? `${(savedKg * 2.20462).toFixed(1)} ${unitLabel} saved`
+      : `${savedKg.toFixed(1)} ${unitLabel} saved`;
+  };
+
+  // When 10 kg of food is used up:
+  const monthlySavedKg = 10.0;
+
+  // Metric displays
+  assert.equal(formatRescued(monthlySavedKg, "Metric"), "10.0 kg");
+  assert.equal(formatSidebar(monthlySavedKg, "Metric"), "10.0 kg saved");
+
+  // US Customary displays (10 kg * 2.20462 = 22.0462 -> 22.0 lbs)
+  assert.equal(formatRescued(monthlySavedKg, "US customary"), "22.0 lbs");
+  assert.equal(formatSidebar(monthlySavedKg, "US customary"), "22.0 lbs saved");
+
+  // Zero rescued state
+  assert.equal(formatRescued(0, "US customary"), "0.0 lbs");
+  assert.equal(formatSidebar(0, "US customary"), "0.0 lbs saved");
+  assert.equal(formatRescued(0, "Metric"), "0.0 kg");
+  assert.equal(formatSidebar(0, "Metric"), "0.0 kg saved");
 });

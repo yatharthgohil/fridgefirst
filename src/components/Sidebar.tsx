@@ -16,6 +16,7 @@ export interface SidebarProps {
   monthlySavedKg?: number;
   monthlyGoalKg?: number;
   mealsSavedCount?: number;
+  measurementUnit?: "Metric" | "US customary";
   onOpenSettings: () => void;
   onSignOut?: () => void;
 }
@@ -29,10 +30,20 @@ export function Sidebar({
   monthlySavedKg = 0,
   monthlyGoalKg = 5.0,
   mealsSavedCount = 0,
+  measurementUnit = "Metric",
   onOpenSettings,
   onSignOut,
 }: SidebarProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  const isUS = measurementUnit === "US customary";
+  const unitLabel = isUS ? "lbs" : "kg";
+  const savedDisplay = isUS
+    ? `${(monthlySavedKg * 2.20462).toFixed(1)} ${unitLabel} saved`
+    : `${monthlySavedKg.toFixed(1)} ${unitLabel} saved`;
+  const targetDisplay = isUS
+    ? `${(monthlyGoalKg * 2.20462).toFixed(1)} ${unitLabel} target`
+    : `${monthlyGoalKg.toFixed(1)} ${unitLabel} target`;
 
   const goalProgress =
     monthlyGoalKg > 0
@@ -100,7 +111,7 @@ export function Sidebar({
           <span className="mini-leaf c" />
         </div>
         <span className="eyebrow">THIS MONTH</span>
-        <strong>{monthlySavedKg.toFixed(1)} kg saved</strong>
+        <strong>{savedDisplay}</strong>
         <p>
           {monthlySavedKg <= 0
             ? "Start tracking food to measure waste prevented."
@@ -110,7 +121,7 @@ export function Sidebar({
           <span style={{ width: `${goalProgress}%` }} />
         </div>
         {monthlyGoalKg > 0 ? (
-          <small>{goalProgress}% of your monthly goal ({monthlyGoalKg.toFixed(1)} kg target)</small>
+          <small>{goalProgress}% of your monthly goal ({targetDisplay})</small>
         ) : (
           <small>Set a monthly target to track impact</small>
         )}

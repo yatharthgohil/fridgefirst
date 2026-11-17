@@ -66,6 +66,8 @@ export interface ActivityEvent {
   detail: string;
   meta: string;
   quantity: string;
+  quantityDelta?: number | null;
+  unit?: string | null;
 }
 
 export function formatUnit(unit: string, quantity: string): string {

@@ -13,6 +13,8 @@ export interface AccountSettingsModalProps {
   onSaveNotice?: (msg: string) => void;
   monthlyGoalKg?: number;
   onGoalChange?: (goalKg: number) => void;
+  measurementUnit?: "Metric" | "US customary";
+  onMeasurementUnitChange?: (unit: "Metric" | "US customary") => void;
   onRetakeOnboarding?: () => void;
 }
 
@@ -24,6 +26,8 @@ export function AccountSettingsModal({
   onSaveNotice,
   monthlyGoalKg = 5.0,
   onGoalChange,
+  measurementUnit = "Metric",
+  onMeasurementUnitChange,
   onRetakeOnboarding,
 }: AccountSettingsModalProps) {
   const [notifications, setNotifications] = useState<NotificationSettings>({
@@ -35,7 +39,8 @@ export function AccountSettingsModal({
     pushNotifications: true,
   });
   const [alertTiming, setAlertTiming] = useState("2 days before");
-  const [measurementUnit, setMeasurementUnit] = useState<"Metric" | "US customary">("Metric");
+  const [unitDraft, setUnitDraft] = useState<"Metric" | "US customary" | null>(null);
+  const currentUnit = unitDraft ?? measurementUnit;
   const [defaultStorage, setDefaultStorage] = useState<StorageLocation>("Fridge");
   const [goalDraft, setGoalDraft] = useState<number | null>(null);
   const selectedGoal = goalDraft ?? monthlyGoalKg;
@@ -53,7 +58,11 @@ export function AccountSettingsModal({
 
   const handleSave = () => {
     onGoalChange?.(selectedGoal);
+    if (unitDraft !== null) {
+      onMeasurementUnitChange?.(unitDraft);
+    }
     setGoalDraft(null);
+    setUnitDraft(null);
     onSaveNotice?.("Settings saved");
     onClose();
   };
@@ -241,9 +250,9 @@ export function AccountSettingsModal({
             <label>
               <span>Measurement system</span>
               <select
-                value={measurementUnit}
+                value={currentUnit}
                 onChange={(e) =>
-                  setMeasurementUnit(e.target.value as "Metric" | "US customary")
+                  setUnitDraft(e.target.value as "Metric" | "US customary")
                 }
               >
                 <option value="Metric">Metric</option>
@@ -282,10 +291,26 @@ export function AccountSettingsModal({
                 value={selectedGoal}
                 onChange={(e) => setGoalDraft(Number(e.target.value))}
               >
-                <option value={3}>3.0 kg (A gentle start · ~6 meals)</option>
-                <option value={5}>5.0 kg (Build a habit · ~10 meals)</option>
-                <option value={6}>6.0 kg (Balanced · ~12 meals)</option>
-                <option value={10}>10.0 kg (Waste less champion · ~20 meals)</option>
+                <option value={3}>
+                  {currentUnit === "US customary"
+                    ? "7 lbs / 3.0 kg (A gentle start · ~6 meals)"
+                    : "3.0 kg (A gentle start · ~6 meals)"}
+                </option>
+                <option value={5}>
+                  {currentUnit === "US customary"
+                    ? "11 lbs / 5.0 kg (Build a habit · ~10 meals)"
+                    : "5.0 kg (Build a habit · ~10 meals)"}
+                </option>
+                <option value={6}>
+                  {currentUnit === "US customary"
+                    ? "13 lbs / 6.0 kg (Balanced · ~12 meals)"
+                    : "6.0 kg (Balanced · ~12 meals)"}
+                </option>
+                <option value={10}>
+                  {currentUnit === "US customary"
+                    ? "22 lbs / 10.0 kg (Waste less champion · ~20 meals)"
+                    : "10.0 kg (Waste less champion · ~20 meals)"}
+                </option>
               </select>
             </label>
           </div>

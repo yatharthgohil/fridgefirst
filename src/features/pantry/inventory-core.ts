@@ -283,5 +283,80 @@ export function historyEntryToActivityEvent(entry: InventoryHistoryEntry, now: D
     detail: `${label} ${formatDelta(entry.quantityDelta, entry.unit).replace(/^[+−]/, "")}`,
     meta,
     quantity: formatDelta(entry.quantityDelta, entry.unit),
+    quantityDelta: entry.quantityDelta,
+    unit: entry.unit,
   };
+}
+
+/**
+ * Calculates the food waste rescued (in kg) represented by an activity event.
+ * Only events of type "cooked" (which includes consumed items, recipe cooking, and meal deductions)
+ * represent rescued food.
+ */
+export function calculateEventRescuedKg(event: ActivityEvent): number {
+  if (event.type !== "cooked") return 0;
+
+  let amount = 0;
+  let unit = (event.unit || "").trim().toLowerCase();
+
+  if (typeof event.quantityDelta === "number" && !Number.isNaN(event.quantityDelta)) {
+    amount = Math.abs(event.quantityDelta);
+  }
+
+  if (amount === 0 && event.quantity) {
+    const cleaned = event.quantity.replace(/^[+−-]/, "").trim();
+    const match = cleaned.match(/^([0-9.]+)\s*(.*)$/);
+    if (match) {
+      amount = parseFloat(match[1]) || 0;
+      if (!unit && match[2]) {
+        unit = match[2].trim().toLowerCase();
+      }
+    }
+  }
+
+  unit = unit.replace(/(?:es|s)$/, "");
+
+  switch (unit) {
+    case "kg":
+    case "kilogram":
+      return amount;
+    case "g":
+    case "gram":
+      return amount / 1000;
+    case "lb":
+    case "pound":
+      return amount * 0.45359237;
+    case "oz":
+    case "ounce":
+      return amount * 0.0283495;
+    case "l":
+    case "liter":
+    case "litre":
+      return amount;
+    case "ml":
+    case "milliliter":
+    case "millilitre":
+      return amount / 1000;
+    case "cup":
+      return amount * 0.24;
+    case "tbsp":
+    case "tablespoon":
+      return amount * 0.015;
+    case "tsp":
+    case "teaspoon":
+      return amount * 0.005;
+    case "meal":
+    case "portion":
+      return amount * 0.5;
+    case "tub":
+    case "can":
+    case "bag":
+    case "head":
+    case "bunch":
+      return amount * 0.4;
+    case "item":
+      return amount * 0.3;
+    default:
+      return amount > 0 ? amount * 0.5 : 0.5;
+  }
 }
