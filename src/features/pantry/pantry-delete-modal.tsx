@@ -10,7 +10,7 @@ export interface PantryDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirmDelete: (itemId: string, expectedVersion: number) => Promise<void>;
-  onReloadLatest?: (item: PantryItem) => void;
+  onReloadLatest?: (item: PantryItem) => Promise<PantryItem | null> | PantryItem | null | void;
 }
 
 export function PantryDeleteModal({
@@ -39,7 +39,9 @@ function DeleteModalBody({
   onConfirmDelete,
   onReloadLatest,
 }: Omit<PantryDeleteModalProps, "isOpen"> & { item: PantryItem }) {
+  const [currentItem, setCurrentItem] = useState<PantryItem>(item);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
@@ -50,12 +52,12 @@ function DeleteModalBody({
     setIsConflict(false);
 
     try {
-      await onConfirmDelete(String(item.id), item.version ?? 1);
+      await onConfirmDelete(String(currentItem.id), currentItem.version ?? 1);
       onClose();
     } catch (err: unknown) {
       if (err instanceof PantryApiError && err.code === "conflict") {
         setIsConflict(true);
-        setDeleteError(err.message);
+        setDeleteError(err.message || "This item was changed elsewhere since you opened it.");
       } else if (err instanceof Error) {
         setDeleteError(err.message || "Failed to remove item. Please try again.");
       } else {
@@ -63,6 +65,23 @@ function DeleteModalBody({
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleReload = async () => {
+    if (!onReloadLatest || isReloading) return;
+    setIsReloading(true);
+    try {
+      const fresh = await onReloadLatest(currentItem);
+      if (fresh) {
+        setCurrentItem(fresh);
+        setIsConflict(false);
+        setDeleteError(null);
+      } else {
+        onClose();
+      }
+    } finally {
+      setIsReloading(false);
     }
   };
 
@@ -77,9 +96,9 @@ function DeleteModalBody({
       <span className="remove-confirm-icon">
         <Icon name="minus" size={22} />
       </span>
-      <h2 id="remove-confirm-title">Remove {item.name}?</h2>
+      <h2 id="remove-confirm-title">Remove {currentItem.name}?</h2>
       <p id="remove-confirm-description">
-        This will remove <strong>{item.quantity} {formatUnit(item.unit, item.quantity)}</strong> from your {item.location.toLowerCase()}. This action cannot be undone.
+        This will remove <strong>{currentItem.quantity} {formatUnit(currentItem.unit, currentItem.quantity)}</strong> from your {currentItem.location.toLowerCase()}. This action cannot be undone.
       </p>
 
       {deleteError && (
@@ -97,13 +116,11 @@ function DeleteModalBody({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => {
-                  onReloadLatest(item);
-                  onClose();
-                }}
+                onClick={handleReload}
+                disabled={isReloading}
                 style={{ fontSize: "10px", padding: "4px 8px" }}
               >
-                Review current values
+                {isReloading ? "Reloading…" : "Review current values"}
               </Button>
             </div>
           )}

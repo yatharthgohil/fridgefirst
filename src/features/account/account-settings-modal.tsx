@@ -11,6 +11,11 @@ export interface AccountSettingsModalProps {
   onClose: () => void;
   onEditProfileClick: () => void;
   onSaveNotice?: (msg: string) => void;
+  monthlyGoalKg?: number;
+  onGoalChange?: (goalKg: number) => void;
+  measurementUnit?: "Metric" | "US customary";
+  onMeasurementUnitChange?: (unit: "Metric" | "US customary") => void;
+  onRetakeOnboarding?: () => void;
 }
 
 export function AccountSettingsModal({
@@ -19,6 +24,11 @@ export function AccountSettingsModal({
   onClose,
   onEditProfileClick,
   onSaveNotice,
+  monthlyGoalKg = 5.0,
+  onGoalChange,
+  measurementUnit = "Metric",
+  onMeasurementUnitChange,
+  onRetakeOnboarding,
 }: AccountSettingsModalProps) {
   const [notifications, setNotifications] = useState<NotificationSettings>({
     expiryAlerts: true,
@@ -29,8 +39,11 @@ export function AccountSettingsModal({
     pushNotifications: true,
   });
   const [alertTiming, setAlertTiming] = useState("2 days before");
-  const [measurementUnit, setMeasurementUnit] = useState<"Metric" | "US customary">("Metric");
+  const [unitDraft, setUnitDraft] = useState<"Metric" | "US customary" | null>(null);
+  const currentUnit = unitDraft ?? measurementUnit;
   const [defaultStorage, setDefaultStorage] = useState<StorageLocation>("Fridge");
+  const [goalDraft, setGoalDraft] = useState<number | null>(null);
+  const selectedGoal = goalDraft ?? monthlyGoalKg;
 
   const toggleNotification = (key: keyof NotificationSettings) => {
     setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -44,6 +57,12 @@ export function AccountSettingsModal({
     .toUpperCase();
 
   const handleSave = () => {
+    onGoalChange?.(selectedGoal);
+    if (unitDraft !== null) {
+      onMeasurementUnitChange?.(unitDraft);
+    }
+    setGoalDraft(null);
+    setUnitDraft(null);
     onSaveNotice?.("Settings saved");
     onClose();
   };
@@ -231,9 +250,9 @@ export function AccountSettingsModal({
             <label>
               <span>Measurement system</span>
               <select
-                value={measurementUnit}
+                value={currentUnit}
                 onChange={(e) =>
-                  setMeasurementUnit(e.target.value as "Metric" | "US customary")
+                  setUnitDraft(e.target.value as "Metric" | "US customary")
                 }
               >
                 <option value="Metric">Metric</option>
@@ -254,6 +273,74 @@ export function AccountSettingsModal({
             </label>
           </div>
         </section>
+
+        <section className="settings-section">
+          <div className="settings-section-heading">
+            <span className="settings-section-icon">
+              <Icon name="sparkle" size={18} />
+            </span>
+            <div>
+              <strong>Monthly waste reduction goal</strong>
+              <p>Set a target for how much food you aim to keep out of the bin each month.</p>
+            </div>
+          </div>
+          <div className="settings-select-grid">
+            <label>
+              <span>Monthly target</span>
+              <select
+                value={selectedGoal}
+                onChange={(e) => setGoalDraft(Number(e.target.value))}
+              >
+                <option value={3}>
+                  {currentUnit === "US customary"
+                    ? "7 lbs / 3.0 kg (A gentle start · ~6 meals)"
+                    : "3.0 kg (A gentle start · ~6 meals)"}
+                </option>
+                <option value={5}>
+                  {currentUnit === "US customary"
+                    ? "11 lbs / 5.0 kg (Build a habit · ~10 meals)"
+                    : "5.0 kg (Build a habit · ~10 meals)"}
+                </option>
+                <option value={6}>
+                  {currentUnit === "US customary"
+                    ? "13 lbs / 6.0 kg (Balanced · ~12 meals)"
+                    : "6.0 kg (Balanced · ~12 meals)"}
+                </option>
+                <option value={10}>
+                  {currentUnit === "US customary"
+                    ? "22 lbs / 10.0 kg (Waste less champion · ~20 meals)"
+                    : "10.0 kg (Waste less champion · ~20 meals)"}
+                </option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        {onRetakeOnboarding && (
+          <section className="settings-section">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon">
+                <Icon name="recipes" size={18} />
+              </span>
+              <div>
+                <strong>Setup &amp; onboarding</strong>
+                <p>Re-run the setup wizard to update your diet, equipment, and savings goal.</p>
+              </div>
+            </div>
+            <div>
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onRetakeOnboarding();
+                }}
+              >
+                Restart onboarding wizard
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
 
       <footer className="settings-footer">

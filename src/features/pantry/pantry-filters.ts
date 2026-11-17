@@ -71,7 +71,12 @@ export function toggleExpirationFilter(state: PantryFilterState, value: Expirati
 function matchesQuery(item: PantryItem, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return item.name.toLowerCase().includes(needle) || item.location.toLowerCase().includes(needle);
+  return (
+    item.name.toLowerCase().includes(needle) ||
+    item.location.toLowerCase().includes(needle) ||
+    Boolean(item.notes && item.notes.toLowerCase().includes(needle)) ||
+    Boolean(item.note && item.note.toLowerCase().includes(needle))
+  );
 }
 
 function matchesBase(item: PantryItem, state: PantryFilterState): boolean {

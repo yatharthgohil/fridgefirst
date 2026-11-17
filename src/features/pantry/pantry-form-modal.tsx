@@ -23,7 +23,7 @@ export interface PantryFormModalProps {
   onClose: () => void;
   onSubmitAdd?: (request: PantryCreateRequest) => Promise<void>;
   onSubmitEdit?: (itemId: string, request: PantryUpdateRequest) => Promise<void>;
-  onReloadLatest?: (item: PantryItem) => void;
+  onReloadLatest?: (item: PantryItem) => Promise<PantryItem | null> | PantryItem | null | void;
 }
 
 export function PantryFormModal({
@@ -91,11 +91,18 @@ function PantryFormModalBody({
     }
   };
 
-  const handleReloadCurrent = () => {
+  const handleReloadCurrent = async () => {
     if (item && onReloadLatest) {
-      onReloadLatest(item);
+      const fresh = await onReloadLatest(item);
+      if (fresh) {
+        setValues(itemToPantryFormValues(fresh));
+      } else {
+        onClose();
+        return;
+      }
+    } else {
+      setValues(initialValues);
     }
-    setValues(initialValues);
     setIsConflict(false);
     setSubmitError(null);
     setErrors({});

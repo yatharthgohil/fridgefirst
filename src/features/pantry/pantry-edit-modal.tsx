@@ -11,7 +11,7 @@ export interface PantryEditModalProps {
   onClose: () => void;
   onSave?: (updatedItem: PantryItem) => void;
   onSubmitEdit?: (itemId: string, request: PantryUpdateRequest) => Promise<void>;
-  onReloadLatest?: (item: PantryItem) => void;
+  onReloadLatest?: (item: PantryItem) => Promise<PantryItem | null> | PantryItem | null | void;
 }
 
 export function PantryEditModal({

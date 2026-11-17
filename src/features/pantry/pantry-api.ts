@@ -20,7 +20,7 @@ import {
 } from "@/contracts/pantry";
 import { inventoryErrorResponseSchema, type InventoryErrorCode } from "@/contracts/inventory";
 import { expirationUrgency } from "@/server/modules/expiration/policy";
-import type { CalendarDate, StorageLocation, Unit } from "@/contracts/common";
+import type { CalendarDate, Unit } from "@/contracts/common";
 import type { ExpirationInfo, PantryItem as UiPantryItem, StorageLocation as UiStorageLocation, UrgencyLevel } from "./types";
 
 export type PantryErrorCode = "validation" | "conflict" | "not_found" | "unauthorized" | "server" | "network";
@@ -110,7 +110,13 @@ export function createHttpPantryApi(fetchImpl: typeof fetch = (...args) => fetch
   return {
     async list(options) {
       const body = await send("/api/pantry", { method: "GET", signal: options?.signal }, fetchImpl);
-      return pantryListResponseSchema.parse(body);
+      const parsed = pantryListResponseSchema.parse(body);
+      return {
+        ...parsed,
+        items: parsed.items.filter(
+          (item) => (item.status === undefined || item.status === "active") && item.quantity > 0
+        ),
+      };
     },
 
     async create(request, options) {
@@ -169,8 +175,11 @@ export function inferPantryFoodArt(name: string): string {
 }
 
 export function contractToUiItem(item: ContractPantryItem): UiPantryItem {
+  const isPast = item.urgency.kind === "past_date";
+  const isCritical = item.urgency.kind === "critical";
+  const isSoon = item.urgency.kind === "soon";
   const urgencyLevel: UrgencyLevel =
-    item.urgency.kind === "critical" ? "critical" : item.urgency.kind === "soon" ? "soon" : "fresh";
+    isPast || isCritical ? "critical" : isSoon ? "soon" : "fresh";
   return {
     id: item.id,
     name: item.name,
@@ -186,6 +195,7 @@ export function contractToUiItem(item: ContractPantryItem): UiPantryItem {
     addedOn: item.addedOn,
     notes: item.notes,
     version: item.version,
+    status: item.status,
     expirationInfo: {
       expiration: item.expiration,
       urgency: item.urgency,
@@ -328,7 +338,9 @@ export function createFixturePantryApi(options: FixturePantryOptions = {}): Fixt
       for (const item of store.values()) {
         if (!seen.has(item.id)) {
           seen.add(item.id);
-          items.push(item);
+          if ((item.status === undefined || item.status === "active") && item.quantity > 0) {
+            items.push(item);
+          }
         }
       }
       return {
@@ -400,8 +412,9 @@ export function createFixturePantryApi(options: FixturePantryOptions = {}): Fixt
       }
 
       if (existing.version !== parsed.expectedVersion) {
-        const { urgency: _urg, ...persisted } = existing;
-        throw new PantryApiError("conflict", "This item was changed or removed in another session since you opened it.", persisted);
+        const persisted = { ...existing } as Record<string, unknown>;
+        delete persisted.urgency;
+        throw new PantryApiError("conflict", "This item was changed or removed in another session since you opened it.", persisted as unknown as PersistedPantryItem);
       }
 
       const changes = parsed.changes;
@@ -462,8 +475,9 @@ export function createFixturePantryApi(options: FixturePantryOptions = {}): Fixt
       }
 
       if (existing.version !== parsed.expectedVersion) {
-        const { urgency: _urg, ...persisted } = existing;
-        throw new PantryApiError("conflict", "This item was changed or removed in another session since you opened it.", persisted);
+        const persisted = { ...existing } as Record<string, unknown>;
+        delete persisted.urgency;
+        throw new PantryApiError("conflict", "This item was changed or removed in another session since you opened it.", persisted as unknown as PersistedPantryItem);
       }
 
       store.delete(existing.id);

@@ -15,6 +15,8 @@ export interface SidebarProps {
   };
   monthlySavedKg?: number;
   monthlyGoalKg?: number;
+  mealsSavedCount?: number;
+  measurementUnit?: "Metric" | "US customary";
   onOpenSettings: () => void;
   onSignOut?: () => void;
 }
@@ -25,17 +27,28 @@ export function Sidebar({
   pantryCount = 12,
   recipesCount = 6,
   user = { name: "Alex Johnson", email: "alex@example.com" },
-  monthlySavedKg = 3.2,
+  monthlySavedKg = 0,
   monthlyGoalKg = 5.0,
+  mealsSavedCount = 0,
+  measurementUnit = "Metric",
   onOpenSettings,
   onSignOut,
 }: SidebarProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const goalProgress = Math.min(
-    100,
-    Math.round((monthlySavedKg / monthlyGoalKg) * 100)
-  );
+  const isUS = measurementUnit === "US customary";
+  const unitLabel = isUS ? "lbs" : "kg";
+  const savedDisplay = isUS
+    ? `${(monthlySavedKg * 2.20462).toFixed(1)} ${unitLabel} saved`
+    : `${monthlySavedKg.toFixed(1)} ${unitLabel} saved`;
+  const targetDisplay = isUS
+    ? `${(monthlyGoalKg * 2.20462).toFixed(1)} ${unitLabel} target`
+    : `${monthlyGoalKg.toFixed(1)} ${unitLabel} target`;
+
+  const goalProgress =
+    monthlyGoalKg > 0
+      ? Math.min(100, Math.round((monthlySavedKg / monthlyGoalKg) * 100))
+      : 0;
 
   const profileInitials = user.name
     .split(" ")
@@ -77,19 +90,41 @@ export function Sidebar({
 
       <div className="sidebar-spacer" />
 
-      <div className="waste-card">
+      <div
+        className="waste-card"
+        onClick={onOpenSettings}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpenSettings();
+          }
+        }}
+        aria-label="Monthly waste goal: click to change target"
+        title="Click to adjust your monthly goal in Settings"
+        style={{ cursor: "pointer" }}
+      >
         <div className="waste-art">
           <span className="mini-leaf a" />
           <span className="mini-leaf b" />
           <span className="mini-leaf c" />
         </div>
         <span className="eyebrow">THIS MONTH</span>
-        <strong>{monthlySavedKg.toFixed(1)} kg saved</strong>
-        <p>You’ve kept 14 meals out of the bin so far.</p>
+        <strong>{savedDisplay}</strong>
+        <p>
+          {monthlySavedKg <= 0
+            ? "Start tracking food to measure waste prevented."
+            : `You’ve kept ${mealsSavedCount} ${mealsSavedCount === 1 ? "meal" : "meals"} out of the bin so far.`}
+        </p>
         <div className="progress">
           <span style={{ width: `${goalProgress}%` }} />
         </div>
-        <small>{goalProgress}% of your monthly goal</small>
+        {monthlyGoalKg > 0 ? (
+          <small>{goalProgress}% of your monthly goal ({targetDisplay})</small>
+        ) : (
+          <small>Set a monthly target to track impact</small>
+        )}
       </div>
 
       <div className="profile-wrap">

@@ -12,7 +12,6 @@ const {
 const {
   createFixturePantryApi,
   contractToUiItem,
-  uiToContractItem,
   PantryApiError,
 } = await import("../src/features/pantry/pantry-api.ts");
 
