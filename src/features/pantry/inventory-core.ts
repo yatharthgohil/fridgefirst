@@ -235,17 +235,53 @@ export function withUpdatedQuantity(item: PantryItem, quantity: number): PantryI
 }
 
 /** Converts a history entry to the dashboard's ActivityEvent shape (Activity page). */
-export function historyEntryToActivityEvent(entry: InventoryHistoryEntry): ActivityEvent {
+export function historyEntryToActivityEvent(entry: InventoryHistoryEntry, now: Date = new Date()): ActivityEvent {
   const label = operationLabel(entry.operation);
   const tone = operationTone(entry.operation);
+  const date = new Date(entry.occurredAt);
+
+  let day = "Today";
+  if (!Number.isNaN(date.getTime())) {
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const eventTime = date.getTime();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    if (eventTime >= startOfToday) {
+      day = "Today";
+    } else if (eventTime >= startOfToday - DAY_MS) {
+      day = "Yesterday";
+    } else {
+      day = date.toLocaleDateString("en-US", { weekday: "long" });
+    }
+  }
+
+  const time = !Number.isNaN(date.getTime())
+    ? date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "Just now";
+
+  const meta =
+    entry.operation === "discard"
+      ? "Marked as discarded"
+      : entry.operation === "consume"
+      ? "Marked as used"
+      : entry.operation === "add"
+      ? "Added to inventory"
+      : entry.operation === "delete"
+      ? "Pantry item removed"
+      : entry.operation === "recipe_deduction"
+      ? "Used in recipe"
+      : "Inventory adjustment";
+
+  const timestamp = !Number.isNaN(date.getTime()) ? date.getTime() : Date.now();
+
   return {
-    id: Date.parse(entry.occurredAt) || Date.now(),
-    day: "Today",
-    time: "Just now",
+    id: entry.id || timestamp,
+    timestamp,
+    day,
+    time,
     type: tone,
     title: `${entry.itemName} ${label.toLowerCase()}`,
     detail: `${label} ${formatDelta(entry.quantityDelta, entry.unit).replace(/^[+−]/, "")}`,
-    meta: entry.operation === "discard" ? "Marked as discarded" : "Marked as used",
+    meta,
     quantity: formatDelta(entry.quantityDelta, entry.unit),
   };
 }

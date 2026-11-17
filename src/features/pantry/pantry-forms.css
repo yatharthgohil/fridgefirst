@@ -241,3 +241,151 @@
     padding: 12px 18px;
   }
 }
+
+/* ---- First-use empty pantry state ---- */
+.pantry-first-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--white);
+  border-radius: 14px;
+  border: 1px dashed var(--line);
+  margin: 12px 0 24px;
+}
+
+.pantry-first-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: var(--green-pale);
+  color: var(--green);
+}
+
+.pantry-first-empty h3 {
+  margin: 0 0 8px;
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.pantry-first-empty p {
+  margin: 0 0 24px;
+  max-width: 440px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.pantry-first-empty-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---- Error and expired session banners ---- */
+.pantry-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 1px solid #f2cfc7;
+  background: #fae8e3;
+  color: #923428;
+}
+
+.pantry-error-banner svg {
+  flex-shrink: 0;
+  color: #c93b2b;
+}
+
+.pantry-error-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pantry-error-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #923428;
+}
+
+.pantry-error-text {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #74251a;
+}
+
+.pantry-error-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pantry-error-actions .button {
+  font-size: 11px;
+}
+
+/* ---- Loading skeletons ---- */
+.inventory-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 20px;
+}
+
+.skeleton-row {
+  height: 48px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eceee9 25%, #f6f7f5 50%, #eceee9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-row {
+    animation: none;
+    background: #eceee9;
+  }
+}
+
+@media (max-width: 760px) {
+  .pantry-error-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .pantry-error-actions {
+    width: 100%;
+  }
+  .pantry-error-actions .button {
+    flex: 1;
+  }
+  .pantry-first-empty {
+    padding: 36px 16px;
+  }
+  .pantry-first-empty-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  .pantry-first-empty-actions .button {
+    width: 100%;
+  }
+}

@@ -10,7 +10,7 @@ export interface PantryRemoveModalProps {
   onClose: () => void;
   onConfirmRemove?: (item: PantryItem) => void;
   onConfirmDelete?: (itemId: string, expectedVersion: number) => Promise<void>;
-  onReloadLatest?: (item: PantryItem) => void;
+  onReloadLatest?: (item: PantryItem) => Promise<PantryItem | null> | PantryItem | null | void;
 }
 
 export function PantryRemoveModal({

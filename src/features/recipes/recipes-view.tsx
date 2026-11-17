@@ -9,6 +9,7 @@ export interface RecipesViewProps {
   preferences: RecipePreferences;
   onOpenPreferences: () => void;
   onSelectRecipe: (recipeId: number) => void;
+  pantryCount?: number;
 }
 
 export function RecipesView({
@@ -16,17 +17,25 @@ export function RecipesView({
   preferences,
   onOpenPreferences,
   onSelectRecipe,
+  pantryCount,
 }: RecipesViewProps) {
   const [recipeFilter, setRecipeFilter] = useState("All");
+  const isPantryEmpty = pantryCount !== undefined && pantryCount === 0;
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter((recipe) => {
       if (recipeFilter === "Under 30 min") return recipe.time <= 30;
-      if (recipeFilter === "90%+ match") return recipe.match >= 90;
-      if (recipeFilter === "No shopping") return recipe.missing.length === 0;
+      if (recipeFilter === "90%+ match") {
+        if (isPantryEmpty) return false;
+        return recipe.match >= 90;
+      }
+      if (recipeFilter === "No shopping") {
+        if (isPantryEmpty) return false;
+        return recipe.missing.length === 0;
+      }
       return true;
     });
-  }, [recipes, recipeFilter]);
+  }, [recipes, recipeFilter, isPantryEmpty]);
 
   return (
     <section className="all-recipes">
@@ -62,7 +71,11 @@ export function RecipesView({
             </Button>
           ))}
         </div>
-        <span>{filteredRecipes.length} recipes ranked for your pantry</span>
+        <span>
+          {isPantryEmpty
+            ? `${filteredRecipes.length} suggested recipes to explore`
+            : `${filteredRecipes.length} recipes ranked for your pantry`}
+        </span>
       </div>
 
       {filteredRecipes.length > 0 ? (
@@ -74,9 +87,11 @@ export function RecipesView({
             >
               <div className="catalog-image">
                 <img src={recipe.image} alt={recipe.name} />
-                <span className="catalog-rank">{index === 0 ? "TOP PICK" : `#${index + 1}`}</span>
+                <span className="catalog-rank">
+                  {index === 0 ? (isPantryEmpty ? "FEATURED" : "TOP PICK") : `#${index + 1}`}
+                </span>
                 <span className="catalog-match">
-                  <Icon name="sparkle" size={13} /> {recipe.match}% match
+                  <Icon name="sparkle" size={13} /> {isPantryEmpty ? "Suggested" : `${recipe.match}% match`}
                 </span>
               </div>
               <div className="catalog-content">
@@ -98,8 +113,21 @@ export function RecipesView({
                   </span>
                 </div>
                 <div className="catalog-footer">
-                  <div className={recipe.missing.length ? "missing-items" : "all-covered"}>
-                    {recipe.missing.length ? (
+                  <div
+                    className={
+                      isPantryEmpty
+                        ? "missing-items neutral"
+                        : recipe.missing.length
+                        ? "missing-items"
+                        : "all-covered"
+                    }
+                  >
+                    {isPantryEmpty ? (
+                      <>
+                        <span>Key ingredients</span>
+                        <strong>{recipe.uses.join(", ")}</strong>
+                      </>
+                    ) : recipe.missing.length ? (
                       <>
                         <span>Missing</span>
                         <strong>{recipe.missing.join(", ")}</strong>
@@ -124,10 +152,20 @@ export function RecipesView({
           <span>
             <Icon name="recipes" size={24} />
           </span>
-          <h2>No recipes match those filters</h2>
-          <p>Try widening your time or pantry-match filters.</p>
+          <h2>
+            {isPantryEmpty && (recipeFilter === "90%+ match" || recipeFilter === "No shopping")
+              ? "Your pantry is empty"
+              : "No recipes match those filters"}
+          </h2>
+          <p>
+            {isPantryEmpty && (recipeFilter === "90%+ match" || recipeFilter === "No shopping")
+              ? "Add items to your pantry to calculate pantry matches and find meals you can make without shopping."
+              : "Try widening your time or pantry-match filters."}
+          </p>
           <Button variant="secondary" onClick={() => setRecipeFilter("All")}>
-            Clear filters
+            {isPantryEmpty && (recipeFilter === "90%+ match" || recipeFilter === "No shopping")
+              ? "Show all recipes"
+              : "Clear filters"}
           </Button>
         </div>
       )}

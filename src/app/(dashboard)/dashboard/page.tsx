@@ -1,6 +1,9 @@
 import { AppShell } from "@/components";
 import { signOut } from "@/features/auth/actions";
 import { requireUser } from "@/server/auth/session";
+import { listPantry } from "@/server/modules/pantry/service";
+import { contractToUiItem } from "@/features/pantry";
+import type { PantryItem } from "@/features/pantry/types";
 
 export const metadata = { title: "Dashboard | FridgeFirst" };
 export const dynamic = "force-dynamic";
@@ -12,8 +15,20 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser();
   const { error } = await searchParams;
-  const fullName: unknown = user.user_metadata.full_name;
+  const fullName: unknown = user.user_metadata?.full_name;
   const email = user.email ?? "";
+
+  let initialPantryItems: PantryItem[] | null = null;
+  let initialPantryError: string | null = null;
+
+  try {
+    const { items: serverItems } = await listPantry();
+    initialPantryItems = serverItems
+      .filter((item) => (item.status === undefined || item.status === "active") && item.quantity > 0)
+      .map(contractToUiItem);
+  } catch (err) {
+    initialPantryError = err instanceof Error ? err.message : "Failed to load pantry items";
+  }
 
   return (
     <>
@@ -28,6 +43,8 @@ export default async function DashboardPage({
           email,
         }}
         onSignOut={signOut}
+        initialPantryItems={initialPantryItems}
+        initialPantryError={initialPantryError}
       />
     </>
   );
