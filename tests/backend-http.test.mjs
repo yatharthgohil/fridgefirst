@@ -11,6 +11,7 @@ for (const [method, path] of [
   ['DELETE', `/api/pantry/${itemId}`],
   ['POST', '/api/inventory/adjustments'],
   ['GET', '/api/inventory/history'],
+  ['GET', '/api/inventory/totals'],
   ['GET', '/api/inventory/history?limit=1&limit=2&unknown=true'],
   ['PATCH', '/api/pantry/not-a-uuid'],
 ]) {
