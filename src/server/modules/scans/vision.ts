@@ -6,7 +6,9 @@ function scanProviderConfig() {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.SCAN_VISION_MODEL?.trim();
   if (!apiKey || !model) {
-    throw new Error("Photo recognition is not configured. Contact the app owner or add items manually.");
+    throw new Error(
+      "Photo recognition is not configured. Contact the app owner or add items manually.",
+    );
   }
   return { apiKey, model };
 }

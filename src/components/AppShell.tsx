@@ -65,10 +65,7 @@ import {
 } from "@/features/cooking";
 
 import {
-  ScanUploadModal,
-  ScanReviewModal,
-  DetectedGrocery,
-  initialDetectedGroceries,
+  ScanFlow,
 } from "@/features/scans";
 
 import {
@@ -168,8 +165,6 @@ export function AppShell({
   // Modal open states
   const [addOpen, setAddOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [detectedGroceriesState] = useState<DetectedGrocery[]>(initialDetectedGroceries);
 
   const [editingItem, setEditingItem] = useState<PantryItem | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<PantryItem | null>(null);
@@ -759,51 +754,6 @@ export function AppShell({
     return fresh;
   };
 
-  const handlePhotosSelected = () => {
-    setUploadOpen(false);
-    setReviewOpen(true);
-  };
-
-  const handleConfirmDetectedItems = (confirmed: DetectedGrocery[]) => {
-    const newPantryEntries: PantryItem[] = confirmed.map((det, idx) => {
-      const meta = calculateExpirationMeta(det.expirationDate);
-      return withFixtureExpiration({
-        id: Date.now() + idx,
-        name: det.name,
-        quantity: det.quantity,
-        unit: det.unit,
-        location: det.location,
-        expirationDate: det.expirationDate,
-        expiry: meta.expiry,
-        urgency: meta.urgency,
-        icon: det.icon,
-        amount: 100,
-        added: "Just now",
-      });
-    });
-
-    setItems((curr) => [...newPantryEntries, ...curr]);
-    const now = Date.now();
-    setActivity((curr) => [
-      {
-        id: now,
-        timestamp: now,
-        day: "Today",
-        time: "Just now",
-        type: "added",
-        title: `${confirmed.length} groceries added`,
-        detail: confirmed.map((c) => c.name).join(", "),
-        meta: "From grocery photo",
-        quantity: `+${confirmed.length} items`,
-      },
-      ...curr,
-    ]);
-
-    setReviewOpen(false);
-    setActivityRefresh((n) => n + 1);
-    flashNotice(`${confirmed.length} groceries added to pantry`);
-  };
-
   const handleOpenRecipe = (recipeId: number) => {
     setSelectedRecipeId(recipeId);
   };
@@ -993,22 +943,16 @@ export function AppShell({
       <MobileNav activeNav={activeNav} onNavigate={setActiveNav} />
 
       {/* Modals */}
-      <ScanUploadModal
-        isOpen={uploadOpen}
+      {uploadOpen && <ScanFlow
+        key={authenticatedUserId ?? "signed-out"}
+        ownerId={authenticatedUserId}
         onClose={() => setUploadOpen(false)}
-        onPhotosSelected={handlePhotosSelected}
-      />
-
-      <ScanReviewModal
-        isOpen={reviewOpen}
-        detectedItems={detectedGroceriesState}
-        onClose={() => setReviewOpen(false)}
-        onChooseDifferentPhoto={() => {
-          setReviewOpen(false);
-          setUploadOpen(true);
+        onConfirmed={() => {
+          void handleRetryLoad();
+          setActivityRefresh((value) => value + 1);
+          flashNotice("Groceries saved to pantry");
         }}
-        onConfirm={handleConfirmDetectedItems}
-      />
+      />}
 
       <PantryFormModal
         isOpen={addOpen}

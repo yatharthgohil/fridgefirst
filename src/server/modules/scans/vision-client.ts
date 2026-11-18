@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { MAX_SCAN_IMAGES, visionOutputSchema, type ScanKind, type VisionOutput } from "@/contracts/scans";
+import {
+  MAX_SCAN_IMAGES,
+  visionOutputSchema,
+  type ScanKind,
+  type VisionOutput,
+} from "@/contracts/scans";
 
 export const groceryPhotoInstructions = [
   "Extract only visible grocery foods from these images for a pantry review.",
@@ -14,14 +19,19 @@ export const groceryPhotoInstructions = [
 
 const envelopeSchema = z.object({
   status: z.string(),
-  output: z.array(z.object({
-    type: z.string(),
-    content: z.array(z.object({ type: z.string(), text: z.string().optional() })).optional(),
-  })),
+  output: z.array(
+    z.object({
+      type: z.string(),
+      content: z
+        .array(z.object({ type: z.string(), text: z.string().optional() }))
+        .optional(),
+    }),
+  ),
 });
 
 async function boundedJson(response: Response): Promise<unknown> {
-  if (!response.body) throw new Error("The recognition provider returned no result.");
+  if (!response.body)
+    throw new Error("The recognition provider returned no result.");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -42,12 +52,27 @@ async function boundedJson(response: Response): Promise<unknown> {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-export function createVisionAnalyzer({ apiKey, model, fetchImpl = fetch, timeoutMs = 45000 }: {
-  apiKey: string; model: string; fetchImpl?: typeof fetch; timeoutMs?: number;
+export function createVisionAnalyzer({
+  apiKey,
+  model,
+  fetchImpl = fetch,
+  timeoutMs = 45000,
+}: {
+  apiKey: string;
+  model: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 }) {
-  return async (images: readonly string[], kind: ScanKind): Promise<VisionOutput> => {
-    if (kind !== "grocery_photo" || images.length < 1 || images.length > MAX_SCAN_IMAGES
-      || images.some((image) => !image.startsWith("data:image/jpeg;base64,"))) {
+  return async (
+    images: readonly string[],
+    kind: ScanKind,
+  ): Promise<VisionOutput> => {
+    if (
+      kind !== "grocery_photo" ||
+      images.length < 1 ||
+      images.length > MAX_SCAN_IMAGES ||
+      images.some((image) => !image.startsWith("data:image/jpeg;base64,"))
+    ) {
       throw new Error("Supply supported grocery images.");
     }
     const schema = z.toJSONSchema(visionOutputSchema);
@@ -56,28 +81,66 @@ export function createVisionAnalyzer({ apiKey, model, fetchImpl = fetch, timeout
     const signal = AbortSignal.timeout(timeoutMs);
     try {
       response = await fetchImpl("https://api.openai.com/v1/responses", {
-        method: "POST", signal,
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        method: "POST",
+        signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          model, store: false, max_output_tokens: 8000,
+          model,
+          store: false,
+          max_output_tokens: 8000,
           instructions: groceryPhotoInstructions,
-          input: [{ role: "user", content: images.map((image) => ({ type: "input_image", image_url: image, detail: "high" })) }],
-          text: { format: { type: "json_schema", name: "grocery_scan", strict: true, schema } },
+          input: [
+            {
+              role: "user",
+              content: images.map((image) => ({
+                type: "input_image",
+                image_url: image,
+                detail: "high",
+              })),
+            },
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "grocery_scan",
+              strict: true,
+              schema,
+            },
+          },
         }),
       });
-      if (!response.ok) throw new Error("Recognition is temporarily unavailable. Please retry later.");
+      if (!response.ok)
+        throw new Error(
+          "Recognition is temporarily unavailable. Please retry later.",
+        );
       const envelope = envelopeSchema.parse(await boundedJson(response));
-      if (envelope.status !== "completed") throw new Error("Recognition did not finish. Please retry.");
+      if (envelope.status !== "completed")
+        throw new Error("Recognition did not finish. Please retry.");
       const content = envelope.output.flatMap((item) => item.content ?? []);
-      if (content.some((item) => item.type === "refusal")) throw new Error("This image could not be analyzed. Try another photo.");
-      const text = content.filter((item) => item.type === "output_text").map((item) => item.text ?? "").join("");
+      if (content.some((item) => item.type === "refusal"))
+        throw new Error("This image could not be analyzed. Try another photo.");
+      const text = content
+        .filter((item) => item.type === "output_text")
+        .map((item) => item.text ?? "")
+        .join("");
       const result = visionOutputSchema.parse(JSON.parse(text));
-      if (result.items.some((item) => item.imageIndex >= images.length)) throw new Error("Recognition returned an invalid image reference.");
+      if (result.items.some((item) => item.imageIndex >= images.length))
+        throw new Error("Recognition returned an invalid image reference.");
       return result;
     } catch (error) {
-      if (signal.aborted) throw new Error("Recognition timed out. Please retry.");
-      if (error instanceof Error && /^(Recognition|This image)/.test(error.message)) throw error;
-      throw new Error("The recognition result could not be validated. Try another photo.");
+      if (signal.aborted)
+        throw new Error("Recognition timed out. Please retry.");
+      if (
+        error instanceof Error &&
+        /^(Recognition|This image)/.test(error.message)
+      )
+        throw error;
+      throw new Error(
+        "The recognition result could not be validated. Try another photo.",
+      );
     }
   };
 }
