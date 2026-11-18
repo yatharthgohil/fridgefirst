@@ -54,6 +54,8 @@ The MVP has individual accounts and individual pantries. Household membership, p
 
 ### Photo capture and confirmation
 
+The implemented capstone scope accepts one JPEG, PNG, or WebP grocery photo or receipt per scan. HEIC needs conversion to JPEG first. Users review and edit suggestions before saving. Private uploads, receipt food-line evidence, and atomic pantry imports share one scan flow. See [scan setup](docs/scans-setup.md) for provider configuration, migrations, and the remaining hosted smoke test. Multiple-image scans and native HEIC support remain outside this MVP.
+
 - Upload one or more grocery or pantry images in JPEG, PNG, or HEIC format.
 - Store images privately in Supabase Storage.
 - Analyze images with a vision-capable AI model to propose food names and estimated quantities.

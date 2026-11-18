@@ -83,4 +83,4 @@ Keep domain logic outside route handlers. Mark privileged server modules with `i
 
 The application is intended for Vercel, with Supabase providing the data platform. No Express server or separate frontend/backend projects are needed. External project/provider setup is required as described above; deployment is not configured in this repository.
 
-Grocery-photo recognition setup and the hosted smoke-test checklist are in [docs/scans-setup.md](docs/scans-setup.md).
+Grocery-photo and receipt recognition setup and the hosted smoke-test checklist are in [docs/scans-setup.md](docs/scans-setup.md).
