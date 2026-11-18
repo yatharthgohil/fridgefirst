@@ -1,0 +1,32 @@
+.scan-review-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 1rem;
+  padding: 1rem;
+  margin: 0 0 1rem;
+  border: 1px solid var(--border-color, #e2e5dc);
+  border-radius: 12px;
+}
+.scan-review-fields legend {
+  padding: 0 0.3rem;
+  font-weight: 600;
+}
+.scan-review-fields > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.scan-review-fields > label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+.scan-review-fields .detail-input {
+  width: 100%;
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .scan-review-fields {
+    grid-template-columns: 1fr;
+  }
+}
