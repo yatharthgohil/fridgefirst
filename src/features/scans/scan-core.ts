@@ -3,6 +3,7 @@ import {
   scanConfirmRequestSchema,
   type Scan,
   type ScanProposal,
+  type ScanKind,
 } from "@/contracts/scans";
 import { pantryCreateRequestSchema } from "@/contracts/pantry";
 
@@ -33,7 +34,10 @@ export function createScanDrafts(
     expirationDate: "",
   }));
 }
-export function validateScanFiles(files: File[]) {
+export function validateScanFiles(
+  files: File[],
+  kind: ScanKind = "grocery_photo",
+) {
   if (
     files.some(
       (file) => /\.hei[cf]$/i.test(file.name) || /hei[cf]/i.test(file.type),
@@ -43,7 +47,7 @@ export function validateScanFiles(files: File[]) {
       "HEIC photos are not supported. Export them as JPEG before uploading.",
     );
   const parsed = scanCreateRequestSchema.safeParse({
-    kind: "grocery_photo",
+    kind,
     images: files.map((file) => ({ contentType: file.type, size: file.size })),
   });
   if (!parsed.success)

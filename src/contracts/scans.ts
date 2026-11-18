@@ -10,7 +10,7 @@ export const SCAN_BUCKET = "grocery-scans";
 export const MAX_SCAN_IMAGES = 1;
 export const MAX_SCAN_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_SCAN_ITEMS = 50;
-export const scanKindSchema = z.literal("grocery_photo");
+export const scanKindSchema = z.enum(["grocery_photo", "receipt"]);
 export const scanImageTypeSchema = z.enum([
   "image/jpeg",
   "image/png",
@@ -40,10 +40,17 @@ export const visionItemSchema = z.strictObject({
     .max(MAX_SCAN_IMAGES - 1),
   warnings: z.array(z.string().max(200)).max(5),
 });
-export const visionOutputSchema = z.strictObject({
+export const groceryPhotoOutputSchema = z.strictObject({
   items: z.array(visionItemSchema).max(MAX_SCAN_ITEMS),
 });
-export const scanProposalSchema = visionItemSchema.extend({ id: z.uuid() });
+export const receiptSourceTextSchema = z.string().trim().min(1).max(200);
+const scanSuggestionSchema = visionItemSchema.extend({
+  sourceText: receiptSourceTextSchema.optional(),
+});
+export const visionOutputSchema = z.strictObject({
+  items: z.array(scanSuggestionSchema).max(MAX_SCAN_ITEMS),
+});
+export const scanProposalSchema = scanSuggestionSchema.extend({ id: z.uuid() });
 const scanBaseSchema = z.strictObject({
   id: z.uuid(),
   kind: scanKindSchema,

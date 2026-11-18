@@ -25,6 +25,23 @@
   width: 100%;
   min-width: 0;
 }
+.scan-source-choice {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.scan-source-choice select {
+  padding: 0.7rem;
+  border: 1px solid var(--border-color, #e2e5dc);
+  border-radius: 8px;
+  background: var(--bg-color, white);
+  color: inherit;
+  font: inherit;
+}
+.scan-source-text {
+  overflow-wrap: anywhere;
+}
 @media (max-width: 560px) {
   .scan-review-fields {
     grid-template-columns: 1fr;
