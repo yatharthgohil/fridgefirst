@@ -4,6 +4,7 @@ import React, { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Icon, FoodArt, ExpiryBadge } from "@/components";
 import { PantryItem, formatUnit, isAttentionItem } from "./types";
+import { compareByRecentlyAdded } from "./pantry-filters";
 import "./pantry-forms.css";
 
 export interface PantryViewProps {
@@ -95,8 +96,7 @@ export function PantryView({
     return [...filteredItems].sort((a, b) => {
       if (pantrySort === "alphabetical") return a.name.localeCompare(b.name);
       if (pantrySort === "added") {
-        if (typeof a.id === "number" && typeof b.id === "number") return b.id - a.id;
-        return String(b.id).localeCompare(String(a.id));
+        return compareByRecentlyAdded(a, b);
       }
       return a.expirationDate.localeCompare(b.expirationDate);
     });

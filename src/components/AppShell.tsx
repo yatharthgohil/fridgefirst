@@ -48,6 +48,7 @@ import {
 } from "@/features/pantry";
 import type { InventoryAdjustmentResponse } from "@/contracts/inventory";
 import type { PantryCreateRequest, PantryUpdateRequest } from "@/contracts/pantry";
+import { loadRescuedTotals, type RescuedTotals } from "@/features/pantry/rescued-totals";
 
 import {
   RecipesView,
@@ -96,9 +97,8 @@ function getEventTimestamp(event: ActivityEvent): number {
 
 function mergeActivityEvents(apiEvents: ActivityEvent[], localEvents: ActivityEvent[]): ActivityEvent[] {
   const seenIds = new Set(apiEvents.map((e) => String(e.id)));
-  const seenTitles = new Set(apiEvents.map((e) => `${e.title.toLowerCase()}|${e.type}`));
   const uniqueLocal = localEvents.filter(
-    (e) => !seenIds.has(String(e.id)) && !seenTitles.has(`${e.title.toLowerCase()}|${e.type}`)
+    (e) => !seenIds.has(String(e.id))
   );
   return [...apiEvents, ...uniqueLocal].sort((a, b) => {
     const diff = getEventTimestamp(b) - getEventTimestamp(a);
@@ -109,6 +109,7 @@ function mergeActivityEvents(apiEvents: ActivityEvent[], localEvents: ActivityEv
 
 
 export interface AppShellProps {
+  authenticatedUserId?: string;
   initialUser?: UserProfile;
   onSignOut?: () => void;
   initialPantryItems?: PantryItem[] | null;
@@ -118,6 +119,7 @@ export interface AppShellProps {
 }
 
 export function AppShell({
+  authenticatedUserId,
   initialUser = { name: "Alex Johnson", email: "alex@example.com" },
   onSignOut,
   initialPantryItems,
@@ -125,6 +127,8 @@ export function AppShell({
   pantryApi: injectedPantryApi,
   inventoryApi: injectedInventoryApi,
 }: AppShellProps) {
+  const storageOwner = authenticatedUserId ?? "fixture";
+  const currentMonth = `${new Date().getFullYear()}-${new Date().getMonth()}`;
   // Navigation & search state
   const router = useRouter();
   const [activeNav, setActiveNav] = useState("Overview");
@@ -188,7 +192,7 @@ export function AppShell({
       !onboardingDismissed &&
       Boolean(initialUser?.email) &&
       (typeof window !== "undefined"
-        ? !localStorage.getItem(`ff_onboarded_${initialUser?.email || "anonymous"}`)
+        ? !localStorage.getItem(`ff_onboarded_${storageOwner}`)
         : false));
 
   // Pantry CRUD API: uses HTTP endpoints when connected to Supabase, in-memory fixtures otherwise.
@@ -207,6 +211,7 @@ export function AppShell({
       : createFixtureInventoryApi({ items: (initialPantryItems ?? initialItems).map(toFixtureItem) });
   });
   const [activityRefresh, setActivityRefresh] = useState(0);
+  const [rescuedTotals, setRescuedTotals] = useState<RescuedTotals | null>(null);
 
   // Retry / reload action for request failures or expired sessions
   const handleRetryLoad = async () => {
@@ -295,10 +300,10 @@ export function AppShell({
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       setIsMounted(true);
-      const email = initialUser?.email;
-      if (!email || typeof window === "undefined") return;
+      const ownerId = storageOwner;
+      if (typeof window === "undefined") return;
       try {
-        const saved = localStorage.getItem(`ff_settings_${email}`);
+        const saved = localStorage.getItem(`ff_settings_${ownerId}`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.monthlyGoalKg && typeof parsed.monthlyGoalKg === "number") {
@@ -319,11 +324,11 @@ export function AppShell({
             }));
           }
         }
-        const cachedActivity = localStorage.getItem(`ff_activity_${email}`);
+        const cachedActivity = localStorage.getItem(`ff_activity_${ownerId}`);
         if (cachedActivity) {
           const parsedActivity = JSON.parse(cachedActivity);
           if (Array.isArray(parsedActivity) && parsedActivity.length > 0) {
-            setActivity(parsedActivity);
+            setActivity((current) => mergeActivityEvents(current, parsedActivity));
           }
         }
       } catch {
@@ -331,10 +336,11 @@ export function AppShell({
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [initialUser?.email]);
+  }, [storageOwner]);
 
   // Sync persisted inventory history from the API into activity state
   useEffect(() => {
+    if (!isMounted) return;
     let cancelled = false;
     inventoryApi
       .listHistory({ limit: 50 })
@@ -343,12 +349,6 @@ export function AppShell({
         const apiEvents = entries.map((entry) => historyEntryToActivityEvent(entry));
         setActivity((curr) => {
           const merged = mergeActivityEvents(apiEvents, curr);
-          const email = user?.email || initialUser?.email;
-          if (email && typeof window !== "undefined") {
-            try {
-              localStorage.setItem(`ff_activity_${email}`, JSON.stringify(merged));
-            } catch {}
-          }
           return merged;
         });
       })
@@ -358,17 +358,31 @@ export function AppShell({
     return () => {
       cancelled = true;
     };
-  }, [inventoryApi, activityRefresh, user?.email, initialUser?.email]);
+  }, [inventoryApi, activityRefresh, isMounted]);
+
+  useEffect(() => {
+    if (!authenticatedUserId) return;
+    const controller = new AbortController();
+    loadRescuedTotals(new Date(), controller.signal)
+      .then((totals) => { if (!controller.signal.aborted) setRescuedTotals(totals); })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setRescuedTotals(null);
+          setNotice("Food rescued totals are unavailable. Please try again later.");
+        }
+      });
+    return () => controller.abort();
+  }, [authenticatedUserId, activityRefresh, currentMonth]);
 
   // Persist local activity events to storage on change
   useEffect(() => {
     if (!isMounted) return;
-    const email = user?.email || initialUser?.email;
-    if (!email || typeof window === "undefined") return;
+    const ownerId = storageOwner;
+    if (!ownerId || typeof window === "undefined") return;
     try {
-      localStorage.setItem(`ff_activity_${email}`, JSON.stringify(activity));
+      localStorage.setItem(`ff_activity_${ownerId}`, JSON.stringify(activity));
     } catch {}
-  }, [activity, isMounted, user?.email, initialUser?.email]);
+  }, [activity, isMounted, storageOwner]);
 
   const handleOnboardingComplete = (data: OnboardingData) => {
     const updatedUser = {
@@ -388,10 +402,10 @@ export function AppShell({
       dietaryNeeds: data.preferences,
       excludedFoods: data.excludedFoods,
     }));
-    const email = user?.email || "anonymous";
-    localStorage.setItem(`ff_onboarded_${email}`, "true");
+    const ownerId = storageOwner;
+    localStorage.setItem(`ff_onboarded_${ownerId}`, "true");
     localStorage.setItem(
-      `ff_settings_${email}`,
+      `ff_settings_${ownerId}`,
       JSON.stringify({
         name: data.name,
         monthlyGoalKg: data.monthlyGoalKg,
@@ -407,8 +421,8 @@ export function AppShell({
   };
 
   const handleOnboardingCancel = () => {
-    const email = user?.email || "anonymous";
-    localStorage.setItem(`ff_onboarded_${email}`, "true");
+    const ownerId = storageOwner;
+    localStorage.setItem(`ff_onboarded_${ownerId}`, "true");
     setOnboardingDismissed(true);
     setForceShowOnboarding(false);
   };
@@ -504,7 +518,7 @@ export function AppShell({
         setNotes((prev) => ({ ...prev, [createdItem.id]: createdItem.notes! }));
       }
       const now = Date.now();
-      setActivity((curr) => [
+      if (!authenticatedUserId) setActivity((curr) => [
         {
           id: now,
           timestamp: now,
@@ -546,8 +560,13 @@ export function AppShell({
           };
         })
       );
-      if (updatedContract.notes !== undefined) {
-        setNotes((prev) => ({ ...prev, [itemId]: updatedContract.notes || "" }));
+      if (request.changes.notes !== undefined) {
+        setNotes((prev) => {
+          if (prev[itemId] !== undefined && prev[itemId] !== (target?.notes ?? target?.note ?? "")) return prev;
+          const next = { ...prev };
+          delete next[itemId];
+          return next;
+        });
       }
 
       const quantityChanged = request.changes.quantity !== undefined && target && String(request.changes.quantity) !== String(target.quantity);
@@ -563,7 +582,7 @@ export function AppShell({
       }
 
       const now = Date.now();
-      setActivity((curr) => [
+      if (!authenticatedUserId) setActivity((curr) => [
         {
           id: now,
           timestamp: now,
@@ -601,7 +620,7 @@ export function AppShell({
       });
       if (target) {
         const now = Date.now();
-        setActivity((curr) => [
+        if (!authenticatedUserId) setActivity((curr) => [
           {
             id: now,
             timestamp: now,
@@ -663,19 +682,14 @@ export function AppShell({
 
   const handleUpdateNote = (id: string | number, text: string) => {
     setNotes((prev) => ({ ...prev, [id]: text }));
-    setItems((curr) =>
-      curr.map((item) =>
-        String(item.id) === String(id) ? { ...item, notes: text } : item
-      )
-    );
   };
 
   const handleSaveNote = async (id: string | number, text: string) => {
     const target = items.find((i) => String(i.id) === String(id));
     if (!target) return;
 
-    const previousNote = notes[id] !== undefined ? notes[id] : (target.notes ?? target.note ?? "");
-    if (text.trim() === (previousNote || "").trim()) {
+    const previousNote = target.notes ?? target.note ?? "";
+    if (text === previousNote) {
       return;
     }
 
@@ -688,18 +702,23 @@ export function AppShell({
       setItems((curr) =>
         curr.map((item) =>
           String(item.id) === String(id)
-            ? { ...item, notes: text, version: updatedContract.version }
+            ? { ...item, ...contractToUiItem(updatedContract), id: item.id }
             : item
         )
       );
-      setNotes((prev) => ({ ...prev, [id]: text }));
+      setNotes((prev) => {
+        if (prev[id] !== text) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
 
       const notePreview = text.trim()
         ? `Note: "${text.trim().slice(0, 45)}${text.trim().length > 45 ? "…" : ""}"`
         : "Note cleared";
 
       const now = Date.now();
-      setActivity((curr) => [
+      if (!authenticatedUserId) setActivity((curr) => [
         {
           id: now,
           timestamp: now,
@@ -727,21 +746,17 @@ export function AppShell({
   };
 
   const handleReloadLatestItem = async (targetItem: PantryItem): Promise<PantryItem | null> => {
-    try {
-      const res = await pantryApi.list();
-      const activeItems = res.items
-        .filter((i) => (i.status === undefined || i.status === "active") && i.quantity > 0)
-        .map(contractToUiItem);
-      setItems(activeItems);
-      const fresh = activeItems.find((i) => String(i.id) === String(targetItem.id));
-      if (!fresh) {
-        flashNotice(`${targetItem.name} is no longer in your pantry`);
-        return null;
-      }
-      return fresh;
-    } catch {
+    const res = await pantryApi.list();
+    const activeItems = res.items
+      .filter((i) => (i.status === undefined || i.status === "active") && i.quantity > 0)
+      .map(contractToUiItem);
+    setItems(activeItems);
+    const fresh = activeItems.find((i) => String(i.id) === String(targetItem.id));
+    if (!fresh) {
+      flashNotice(`${targetItem.name} is no longer in your pantry`);
       return null;
     }
+    return fresh;
   };
 
   const handlePhotosSelected = () => {
@@ -829,17 +844,27 @@ export function AppShell({
   const cookedMealsCount = activity.filter((e) => e.type === "cooked").length;
   // Food waste saved is accurately calculated from consumed items and cooked meals
   const monthlySavedKg = useMemo(() => {
-    const sum = activity.reduce((acc, event) => acc + calculateEventRescuedKg(event), 0);
+    if (authenticatedUserId) return rescuedTotals?.monthlyKg ?? 0;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+    const sum = activity.reduce((acc, event) => acc + (getEventTimestamp(event) >= start && getEventTimestamp(event) < end ? calculateEventRescuedKg(event) : 0), 0);
     return Math.round(sum * 10) / 10;
-  }, [activity]);
+  }, [activity, authenticatedUserId, rescuedTotals]);
+
+  const lifetimeSavedKg = authenticatedUserId
+    ? rescuedTotals?.lifetimeKg ?? 0
+    : activity.reduce((total, event) => total + calculateEventRescuedKg(event), 0);
 
   const isUS = measurementUnit === "US customary";
   const savedAmountDisplay =
-    monthlySavedKg <= 0
+    authenticatedUserId && !rescuedTotals
+      ? "Unavailable"
+      : lifetimeSavedKg <= 0
       ? isUS ? "0.0 lbs" : "0.0 kg"
       : isUS
-      ? `${(monthlySavedKg * 2.20462).toFixed(1)} lbs`
-      : `${monthlySavedKg.toFixed(1)} kg`;
+      ? `${(lifetimeSavedKg * 2.20462).toFixed(1)} lbs`
+      : `${lifetimeSavedKg.toFixed(1)} kg`;
 
   if (showOnboarding) {
     return (
@@ -1045,12 +1070,12 @@ export function AppShell({
         monthlyGoalKg={monthlyGoalKg}
         onGoalChange={(newGoal) => {
           setMonthlyGoalKg(newGoal);
-          const email = user?.email || initialUser?.email || "anonymous";
+          const ownerId = storageOwner;
           try {
-            const existing = localStorage.getItem(`ff_settings_${email}`);
+            const existing = localStorage.getItem(`ff_settings_${ownerId}`);
             const parsed = existing ? JSON.parse(existing) : {};
             localStorage.setItem(
-              `ff_settings_${email}`,
+              `ff_settings_${ownerId}`,
               JSON.stringify({ ...parsed, monthlyGoalKg: newGoal })
             );
           } catch {}
@@ -1063,12 +1088,12 @@ export function AppShell({
         measurementUnit={measurementUnit}
         onMeasurementUnitChange={(newUnit) => {
           setMeasurementUnit(newUnit);
-          const email = user?.email || initialUser?.email || "anonymous";
+          const ownerId = storageOwner;
           try {
-            const existing = localStorage.getItem(`ff_settings_${email}`);
+            const existing = localStorage.getItem(`ff_settings_${ownerId}`);
             const parsed = existing ? JSON.parse(existing) : {};
             localStorage.setItem(
-              `ff_settings_${email}`,
+              `ff_settings_${ownerId}`,
               JSON.stringify({ ...parsed, measurementUnit: newUnit })
             );
           } catch {}

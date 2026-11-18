@@ -143,12 +143,21 @@ export function sortPantryItems(items: PantryItem[], sort: PantrySort): PantryIt
   const sorted = [...items];
   if (sort === "name") return sorted.sort(compareNameThenId);
   if (sort === "added") {
-    return sorted.sort((a, b) => {
-      if (typeof a.id === "number" && typeof b.id === "number") return b.id - a.id;
-      return String(b.id).localeCompare(String(a.id));
-    });
+    return sorted.sort(compareByRecentlyAdded);
   }
   return sorted.sort(compareByExpiration);
+}
+
+export function compareByRecentlyAdded(a: PantryItem, b: PantryItem): number {
+  if (a.addedOn !== b.addedOn) {
+    if (!a.addedOn) return 1;
+    if (!b.addedOn) return -1;
+    return a.addedOn > b.addedOn ? -1 : 1;
+  }
+  if (!a.addedOn && typeof a.id === "number" && typeof b.id === "number") {
+    return b.id - a.id;
+  }
+  return compareIds(a, b);
 }
 
 export function applyPantryFilters(items: PantryItem[], state: PantryFilterState): PantryItem[] {

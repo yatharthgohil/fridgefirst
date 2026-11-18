@@ -24,7 +24,7 @@ export function PantryDeleteModal({
 
   return (
     <DeleteModalBody
-      key={`del-${item.id}-${item.version ?? 1}`}
+      key={`del-${item.id}`}
       item={item}
       onClose={onClose}
       onConfirmDelete={onConfirmDelete}
@@ -46,7 +46,7 @@ function DeleteModalBody({
   const [isConflict, setIsConflict] = useState(false);
 
   const handleDelete = async () => {
-    if (isDeleting) return;
+    if (isDeleting || isReloading) return;
     setIsDeleting(true);
     setDeleteError(null);
     setIsConflict(false);
@@ -77,9 +77,11 @@ function DeleteModalBody({
         setCurrentItem(fresh);
         setIsConflict(false);
         setDeleteError(null);
-      } else {
+      } else if (fresh === null) {
         onClose();
       }
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Could not reload item. Please try again.");
     } finally {
       setIsReloading(false);
     }
@@ -88,7 +90,7 @@ function DeleteModalBody({
   return (
     <Modal
       isOpen
-      onClose={isDeleting ? () => {} : onClose}
+      onClose={isDeleting || isReloading ? () => {} : onClose}
       className="remove-confirm-modal"
       role="alertdialog"
       titleId="remove-confirm-title"
@@ -131,14 +133,14 @@ function DeleteModalBody({
         <Button
           variant="secondary"
           onClick={onClose}
-          disabled={isDeleting}
+          disabled={isDeleting || isReloading}
         >
           Cancel
         </Button>
         <Button
           className="confirm-remove-button"
           onClick={handleDelete}
-          disabled={isDeleting}
+          disabled={isDeleting || isReloading}
         >
           {isDeleting ? "Removing..." : "Remove item"}
         </Button>

@@ -185,7 +185,7 @@ export function validatePantryForm(values: PantryFormValues): {
 export function computePantryChanges(
   initial: PantryFormValues,
   current: PantryFormValues,
-): { hasChanges: boolean; changes: PantryChanges } {
+): { hasChanges: false; changes: Record<string, never> } | { hasChanges: true; changes: PantryChanges } {
   const changes: Record<string, unknown> = {};
 
   if (current.name.trim() !== initial.name.trim()) {
@@ -236,17 +236,8 @@ export function computePantryChanges(
 
   const hasChanges = Object.keys(changes).length > 0;
   if (!hasChanges) {
-    return { hasChanges: false, changes: {} as PantryChanges };
+    return { hasChanges: false, changes: {} };
   }
 
-  const parsed = pantryChangesSchema.safeParse(changes);
-  if (!parsed.success) {
-    // If unit changed without quantity (or other contract issue), ensure quantity is attached
-    if (changes.unit !== undefined && changes.quantity === undefined) {
-      changes.quantity = currentNum;
-    }
-    return { hasChanges: true, changes: changes as PantryChanges };
-  }
-
-  return { hasChanges: true, changes: parsed.data };
+  return { hasChanges: true, changes: pantryChangesSchema.parse(changes) };
 }

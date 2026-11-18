@@ -38,8 +38,7 @@ export function PantryFormModal({
   if (!isOpen) return null;
   if (mode === "edit" && !item) return null;
 
-  // Keyed so each item / mode gets fresh state
-  const key = mode === "edit" ? `edit-${item?.id}-${item?.version ?? 1}` : "add-item";
+  const key = mode === "edit" ? `edit-${item?.id}` : "add-item";
   return (
     <PantryFormModalBody
       key={key}
@@ -71,14 +70,17 @@ function PantryFormModalBody({
   const expirationErrorId = `${ids}-exp-err`;
   const notesErrorId = `${ids}-notes-err`;
 
+  const [currentItem, setCurrentItem] = useState(item);
   const initialValues: PantryFormValues =
-    mode === "edit" && item ? itemToPantryFormValues(item) : defaultPantryFormValues();
+    mode === "edit" && currentItem ? itemToPantryFormValues(currentItem) : defaultPantryFormValues();
 
   const [values, setValues] = useState<PantryFormValues>(initialValues);
   const [errors, setErrors] = useState<PantryFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
+  const isBusy = isSubmitting || isReloading;
 
   const handleFieldChange = <K extends keyof PantryFormValues>(field: K, val: PantryFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: val }));
@@ -92,25 +94,31 @@ function PantryFormModalBody({
   };
 
   const handleReloadCurrent = async () => {
-    if (item && onReloadLatest) {
-      const fresh = await onReloadLatest(item);
-      if (fresh) {
-        setValues(itemToPantryFormValues(fresh));
-      } else {
+    if (!currentItem || !onReloadLatest || isReloading) return;
+    setIsReloading(true);
+    try {
+      const fresh = await onReloadLatest(currentItem);
+      if (fresh === null) {
         onClose();
         return;
       }
-    } else {
-      setValues(initialValues);
+      if (fresh) {
+        setCurrentItem(fresh);
+        setValues(itemToPantryFormValues(fresh));
+        setIsConflict(false);
+        setSubmitError(null);
+        setErrors({});
+      }
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : "Could not reload item. Please try again.");
+    } finally {
+      setIsReloading(false);
     }
-    setIsConflict(false);
-    setSubmitError(null);
-    setErrors({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || isReloading) return;
 
     setSubmitError(null);
     setIsConflict(false);
@@ -128,15 +136,15 @@ function PantryFormModalBody({
         await onSubmitAdd(validation.cleaned!);
         onClose();
       } else {
-        if (!onSubmitEdit || !item) throw new Error("No edit handler provided.");
+        if (!onSubmitEdit || !currentItem) throw new Error("No edit handler provided.");
         const { hasChanges, changes } = computePantryChanges(initialValues, values);
         if (!hasChanges) {
           setErrors({ general: "No changes to save." });
           setIsSubmitting(false);
           return;
         }
-        await onSubmitEdit(String(item.id), {
-          expectedVersion: item.version ?? 1,
+        await onSubmitEdit(String(currentItem.id), {
+          expectedVersion: currentItem.version ?? 1,
           changes,
         });
         onClose();
@@ -159,7 +167,7 @@ function PantryFormModalBody({
   return (
     <Modal
       isOpen
-      onClose={isSubmitting ? () => {} : onClose}
+      onClose={isBusy ? () => {} : onClose}
       className="pantry-form-modal"
       titleId={titleId}
     >
@@ -168,7 +176,7 @@ function PantryFormModalBody({
           <span className="review-step">
             <Icon name="pantry" size={15} /> {mode === "add" ? "New item" : "Edit item"}
           </span>
-          <h2 id={titleId}>{mode === "add" ? "Add to pantry" : `Edit ${item?.name}`}</h2>
+          <h2 id={titleId}>{mode === "add" ? "Add to pantry" : `Edit ${currentItem?.name}`}</h2>
           <p>
             {mode === "add"
               ? "Add a grocery or pantry item with estimated or custom expiration."
@@ -178,7 +186,7 @@ function PantryFormModalBody({
         <Button
           variant="icon"
           onClick={onClose}
-          disabled={isSubmitting}
+          disabled={isBusy}
           aria-label="Close"
         >
           <Icon name="close" />
@@ -199,6 +207,7 @@ function PantryFormModalBody({
                     type="button"
                     variant="secondary"
                     onClick={handleReloadCurrent}
+                    disabled={isReloading}
                     style={{ fontSize: "10px", padding: "5px 10px" }}
                   >
                     Review current values
@@ -225,7 +234,7 @@ function PantryFormModalBody({
                 onChange={(e) => handleFieldChange("name", e.target.value)}
                 placeholder="e.g. Baby spinach, Greek yogurt"
                 autoFocus={mode === "add"}
-                disabled={isSubmitting}
+                disabled={isBusy}
                 aria-invalid={Boolean(errors.name)}
                 aria-describedby={errors.name ? nameErrorId : undefined}
                 required
@@ -247,7 +256,7 @@ function PantryFormModalBody({
                 value={values.quantity}
                 onChange={(e) => handleFieldChange("quantity", e.target.value)}
                 placeholder="1"
-                disabled={isSubmitting}
+                disabled={isBusy}
                 aria-invalid={Boolean(errors.quantity)}
                 aria-describedby={errors.quantity ? qtyErrorId : undefined}
                 required
@@ -267,7 +276,7 @@ function PantryFormModalBody({
                 name="unit"
                 value={values.unit}
                 onChange={(e) => handleFieldChange("unit", e.target.value as PantryFormValues["unit"])}
-                disabled={isSubmitting}
+                disabled={isBusy}
                 aria-invalid={Boolean(errors.unit)}
                 aria-describedby={errors.unit ? unitErrorId : undefined}
               >
@@ -294,7 +303,7 @@ function PantryFormModalBody({
                 onChange={(e) =>
                   handleFieldChange("storageLocation", e.target.value as PantryFormValues["storageLocation"])
                 }
-                disabled={isSubmitting}
+                disabled={isBusy}
                 aria-invalid={Boolean(errors.storageLocation)}
                 aria-describedby={errors.storageLocation ? locationErrorId : undefined}
               >
@@ -320,7 +329,7 @@ function PantryFormModalBody({
                 name="addedOn"
                 value={values.addedOn}
                 onChange={(e) => handleFieldChange("addedOn", e.target.value)}
-                disabled={isSubmitting}
+                disabled={isBusy}
                 aria-invalid={Boolean(errors.addedOn)}
                 aria-describedby={errors.addedOn ? addedOnErrorId : undefined}
                 required
@@ -346,7 +355,7 @@ function PantryFormModalBody({
                     value="estimate"
                     checked={values.expirationKind === "estimate"}
                     onChange={() => handleFieldChange("expirationKind", "estimate")}
-                    disabled={isSubmitting}
+                    disabled={isBusy}
                   />
                   <div className="expiration-option-content">
                     <strong>Estimated shelf-life</strong>
@@ -366,7 +375,7 @@ function PantryFormModalBody({
                     value="override"
                     checked={values.expirationKind === "override"}
                     onChange={() => handleFieldChange("expirationKind", "override")}
-                    disabled={isSubmitting}
+                    disabled={isBusy}
                   />
                   <div className="expiration-option-content">
                     <strong>Manual date override</strong>
@@ -384,7 +393,7 @@ function PantryFormModalBody({
                       type="date"
                       value={values.expirationDate}
                       onChange={(e) => handleFieldChange("expirationDate", e.target.value)}
-                      disabled={isSubmitting}
+                      disabled={isBusy}
                       aria-invalid={Boolean(errors.expirationDate)}
                       aria-describedby={errors.expirationDate ? expirationErrorId : undefined}
                       required
@@ -407,7 +416,7 @@ function PantryFormModalBody({
                     value="unknown"
                     checked={values.expirationKind === "unknown"}
                     onChange={() => handleFieldChange("expirationKind", "unknown")}
-                    disabled={isSubmitting}
+                    disabled={isBusy}
                   />
                   <div className="expiration-option-content">
                     <strong>Date unknown</strong>
@@ -430,7 +439,7 @@ function PantryFormModalBody({
                 onChange={(e) => handleFieldChange("notes", e.target.value)}
                 placeholder="Storage reminders, package open date, brand, or meal ideas..."
                 maxLength={2000}
-                disabled={isSubmitting}
+                disabled={isBusy}
                 aria-invalid={Boolean(errors.notes)}
                 aria-describedby={errors.notes ? notesErrorId : undefined}
               />
@@ -448,11 +457,11 @@ function PantryFormModalBody({
             type="button"
             variant="secondary"
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={isBusy}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isBusy}>
             {isSubmitting ? (
               <>{mode === "add" ? "Adding item..." : "Saving changes..."}</>
             ) : (

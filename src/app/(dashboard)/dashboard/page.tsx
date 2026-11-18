@@ -38,6 +38,8 @@ export default async function DashboardPage({
         </p>
       )}
       <AppShell
+        key={user.id}
+        authenticatedUserId={user.id}
         initialUser={{
           name: typeof fullName === "string" && fullName.trim() ? fullName : email,
           email,

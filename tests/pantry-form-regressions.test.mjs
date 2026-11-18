@@ -6,7 +6,8 @@ import ts from "typescript";
 import "./helpers/register-ts-paths.mjs";
 const core = await import("../src/features/pantry/pantry-form-core.ts");
 const { PantryApiError } = await import("../src/features/pantry/pantry-api.ts");
-const { sortPantryItems } = await import("../src/features/pantry/pantry-filters.ts");
+const filters = await import("../src/features/pantry/pantry-filters.ts");
+const { sortPantryItems } = filters;
 
 function mountModal(file, exportName, props) {
   const states = [];
@@ -14,6 +15,7 @@ function mountModal(file, exportName, props) {
   const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useId: () => "modal",
+    useMemo: (compute) => compute(),
     useState(initial) {
       const index = cursor++;
       if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
@@ -24,20 +26,22 @@ function mountModal(file, exportName, props) {
   const code = ts.transpileModule(`${source}\nexport { ${exportName} };`, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  const module = { exports: {} };
+  const compiled = { exports: {} };
   vm.runInNewContext(code, {
-    module, exports: module.exports,
+    module: compiled, exports: compiled.exports, Error,
     require(specifier) {
       if (specifier === "react") return React;
       if (specifier === "@/components") return { Modal: "Modal", Button: "Button", Icon: "Icon" };
       if (specifier === "./pantry-form-core") return core;
       if (specifier === "./pantry-api") return { PantryApiError };
-      if (specifier === "./types") return { formatUnit: (unit) => unit };
+      if (specifier === "./types") return { formatUnit: (unit) => unit, isAttentionItem: () => false };
+      if (specifier === "./pantry-filters") return filters;
+      if (specifier === "next/navigation") return { useRouter: () => ({ push() {} }) };
       if (specifier.endsWith(".css")) return {};
       throw new Error(`Unexpected import ${specifier}`);
     },
   });
-  const render = () => { cursor = 0; return module.exports[exportName](props); };
+  const render = () => { cursor = 0; return compiled.exports[exportName](props); };
   return { render };
 }
 
@@ -112,3 +116,12 @@ test("change computation refuses invalid patches instead of casting them", () =>
   assert.throws(() => core.computePantryChanges(initial, { ...initial, quantity: "invalid" }));
 });
 
+test("standalone pantry view sorts UUID items by the selected added date", () => {
+  const older = { ...item, name: "Older", expirationDate: "2026-11-20", id: "ffffffff-ffff-4fff-8fff-ffffffffffff", addedOn: "2026-10-31" };
+  const newer = { ...item, name: "Newer", expirationDate: "2026-11-20", addedOn: "2026-11-17" };
+  const view = mountModal("pantry-view.tsx", "PantryView", { items: [older, newer] });
+  const select = nodes(view.render()).find((node) => node.type === "select" && node.props["aria-label"] === "Sort pantry items");
+  select.props.onChange({ target: { value: "added" } });
+  const rows = nodes(view.render()).filter((node) => node.type === "article" && node.props.className?.startsWith("inventory-row"));
+  assert.deepEqual(rows.map((row) => nodes(row).find((node) => node.type === "strong").props.children[0]), ["Newer", "Older"]);
+});
