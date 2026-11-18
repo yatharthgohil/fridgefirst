@@ -3,7 +3,7 @@ import { storageLocationSchema, timestampSchema, unitSchema } from "./common";
 import { pantryCreateRequestSchema, persistedPantryItemSchema, versionSchema } from "./pantry";
 
 export const SCAN_BUCKET = "grocery-scans";
-export const MAX_SCAN_IMAGES = 3;
+export const MAX_SCAN_IMAGES = 1;
 export const MAX_SCAN_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_SCAN_ITEMS = 50;
 export const scanKindSchema = z.literal("grocery_photo");

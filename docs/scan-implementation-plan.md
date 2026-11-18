@@ -10,7 +10,7 @@ We chose durable sessions over a stateless response because refresh recovery, an
 
 Images upload directly to a private Supabase Storage bucket through the user's session. The server assigns the paths. Storage policies restrict each path to its owner's uploading scan. Image bytes are decoded and checked before being sent to the vision provider. The application never accepts arbitrary remote image URLs.
 
-The initial limits are three JPEG, PNG, or WebP images per scan, five MiB per image, and fifty suggestions. HEIC must be exported to JPEG first. No recognition result may claim a verified expiration date. The existing pantry service calculates reference estimates after confirmation, or accepts an explicit user override.
+The initial limits are one JPEG, PNG, or WebP image per scan, five MiB per image, and fifty suggestions. HEIC must be exported to JPEG first. No recognition result may claim a verified expiration date. The existing pantry service calculates reference estimates after confirmation, or accepts an explicit user override.
 
 The server-only provider uses OpenAI Responses with a configured vision model and validated structured output. Missing configuration returns a real error, never sample detections. Adapter tests use controlled provider responses. A real provider smoke test requires the user's credentials and will be reported separately.
 
