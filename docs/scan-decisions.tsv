@@ -1,0 +1,3 @@
+ts	phase	decision	why	evidence	result
+2026-11-18T00:20:16.3520663Z	design	Selected durable session plus client-only review drafts	Stateless token still needs replay state; an analysis lease allows safe interrupted retries	docs/scan-implementation-plan.md;src/contracts/scans.ts	Contract typechecks
+2026-11-18T00:20:16.3597535Z	scope	Use direct private uploads and decoded JPEG PNG WebP; require explicit provider model	Avoid serverless body limits and unsupported HEIC promises	https://supabase.com/docs/guides/storage/security/access-control;https://developers.openai.com/api/docs/guides/images-vision	Hosted setup deferred to final checklist
