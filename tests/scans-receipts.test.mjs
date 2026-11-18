@@ -88,6 +88,7 @@ test("receipt extraction drops every excluded category and keeps repeated food p
   assert.equal(request.text.format.strict, true);
   const visit = (schema) => {
     if (!schema || typeof schema !== "object") return;
+    assert.equal("oneOf" in schema, false);
     if (schema.type === "object") {
       assert.equal(schema.additionalProperties, false);
       assert.deepEqual(
@@ -101,6 +102,10 @@ test("receipt extraction drops every excluded category and keeps repeated food p
     }
   };
   visit(request.text.format.schema);
+  assert.equal(
+    request.text.format.schema.properties.lines.items.anyOf.length,
+    2,
+  );
   assert.match(request.instructions, /never a price/i);
   assert.match(request.instructions, /Multipacks/);
   assert.match(request.instructions, /Weighted foods/);

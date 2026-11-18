@@ -36,7 +36,7 @@ export const receiptInstructions = [
 const receiptOutputSchema = z.strictObject({
   lines: z
     .array(
-      z.discriminatedUnion("category", [
+      z.union([
         visionItemSchema.extend({
           category: z.literal("food"),
           sourceText: receiptSourceTextSchema,
