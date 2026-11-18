@@ -362,3 +362,60 @@ test("failed recognition can be retried from the real flow without changing pant
   assert.ok(button(h.render(), "Confirm selected groceries"));
   assert.equal(h.confirmed(), 0);
 });
+
+test("receipt selection uploads the chosen kind and reviews food-line evidence before saving", async () => {
+  const receipt = {
+    ...scan,
+    kind: "receipt",
+    proposals: [{ ...proposal, sourceText: "ORG MLK  3.49" }],
+  };
+  let created;
+  let saved;
+  const h = flowHarness({
+    create: async (request) => {
+      created = request;
+      return { ...receipt, status: "uploading", proposals: undefined };
+    },
+    upload: async () => {},
+    analyze: async () => receipt,
+    confirm: async (_id, request) => {
+      saved = request;
+      return { items: [{}] };
+    },
+  });
+  h.data.clear();
+  elements(h.render(), (node) => node.type === "select")[0].props.onChange({
+    target: { value: "receipt" },
+  });
+  const chooser = elements(h.render(), (node) => node.props.type === "file")[0];
+  chooser.props.onChange({
+    target: {
+      files: [new File(["abc"], "receipt.jpg", { type: "image/jpeg" })],
+      value: "receipt.jpg",
+    },
+  });
+  await settle();
+  assert.equal(created.kind, "receipt");
+  assert.deepEqual(created.images, [{ contentType: "image/jpeg", size: 3 }]);
+  assert.equal(
+    elements(h.render(), (node) => node.type === "q")[0].props.children[0],
+    "ORG MLK  3.49",
+  );
+  button(h.render(), "Confirm selected groceries").props.onClick();
+  assert.equal(saved, undefined);
+  for (const [label, value] of [
+    ["Quantity for Milk", "1"],
+    ["Unit for Milk", "item"],
+  ]) {
+    elements(
+      h.render(),
+      (node) => node.props["aria-label"] === label,
+    )[0].props.onChange({ target: { value } });
+  }
+  button(h.render(), "Confirm selected groceries").props.onClick();
+  await settle();
+  assert.equal(saved.items[0].fields.quantity, 1);
+  assert.equal(saved.items[0].fields.unit, "item");
+  assert.equal(saved.items[0].fields.sourceText, undefined);
+  assert.equal(h.confirmed(), 1);
+});
