@@ -181,3 +181,28 @@ test("cleanup failure preserves row for retry and missing rows make repeated del
   });
   await deleteScan(id);
 });
+
+test("receipt analysis keeps food evidence and assigns separate IDs to repeated purchases", async () => {
+  setup();
+  const rpc = state.rpc;
+  state.rpc = async (...args) => {
+    const result = await rpc(...args);
+    if (result.data.scan) result.data.scan.kind = "receipt";
+    return result;
+  };
+  state.analyze = async (_images, kind) => {
+    assert.equal(kind, "receipt");
+    return {
+      items: [
+        { ...item, sourceText: "ORG MLK 1 L" },
+        { ...item, sourceText: "ORG MLK 1 L" },
+      ],
+    };
+  };
+  const { scan } = await analyzeScan(id);
+  assert.equal(scan.kind, "receipt");
+  assert.equal(scan.proposals.length, 2);
+  assert.notEqual(scan.proposals[0].id, scan.proposals[1].id);
+  assert.equal(scan.proposals[0].sourceText, "ORG MLK 1 L");
+  assert.equal(scan.proposals[1].sourceText, "ORG MLK 1 L");
+});
