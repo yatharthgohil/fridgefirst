@@ -349,9 +349,10 @@ h1 { margin: 6px 0 5px; font-family: "Fraunces", serif; font-size: clamp(30px, 3
 .welcome-nav { width: min(1180px, calc(100% - 48px)); height: 78px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 5; }
 .welcome-nav > div { display: flex; align-items: center; gap: 5px; }
 .welcome-nav > div .button { font-size: 11px; }
-.welcome-brand { padding: 0; color: var(--ink); font-family: "Fraunces", serif; font-size: 20px; }
-.welcome-brand:hover { color: var(--green); }
-.welcome-brand .brand-logo { width: 42px; height: 42px; margin-right: -1px; }
+.welcome-brand { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; padding: 0; color: var(--green); font-family: "Fraunces", serif; font-size: 20px; }
+.welcome-brand:hover { color: var(--green-dark); }
+.welcome-brand .brand-logo { width: 39px; height: 39px; flex: 0 0 auto; display: block; object-fit: contain; }
+.welcome-brand strong { color: var(--green); }
 .welcome-brand > span:last-child strong { color: var(--green); }
 .landing-main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
 .landing-hero { min-height: 610px; display: grid; grid-template-columns: minmax(0, .9fr) minmax(430px, 1.1fr); gap: 65px; align-items: center; padding: 48px 0 75px; }
@@ -414,6 +415,9 @@ h1 { margin: 6px 0 5px; font-family: "Fraunces", serif; font-size: clamp(30px, 3
 .auth-card > p:not(.auth-switch) { max-width: 330px; margin: 0 auto 22px; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .auth-card > p strong { color: var(--ink); }
 .auth-card > .button { width: 100%; min-height: 41px; }
+.auth-card.login-card { max-width: 440px; padding: 40px 34px 34px; }
+.auth-card.login-card .button { width: 100%; min-height: 44px; background: var(--white); border: 1px solid var(--line); color: var(--ink); border-radius: 11px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(20,40,25,.04); }
+.auth-card.login-card .button:hover:not(:disabled) { background: #f7f9f6; border-color: #bcc9bc; }
 .auth-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
 .auth-form label > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 8px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .auth-form input { width: 100%; height: 42px; padding: 0 11px; outline: 0; color: var(--ink); border: 1px solid var(--line); border-radius: 9px; background: var(--white); font-size: 10px; }
