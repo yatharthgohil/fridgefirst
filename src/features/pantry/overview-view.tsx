@@ -31,6 +31,7 @@ export function OverviewView({
   activityPanel,
   renderExpiration,
 }: OverviewViewProps) {
+  void onNotice;
   const [filter, setFilter] = useState("All");
 
   const activeItems = useMemo(
@@ -88,24 +89,6 @@ export function OverviewView({
           <h1>Good afternoon, {userName}.</h1>
           <p>Here’s what to use next, before it goes to waste.</p>
         </div>
-        <Button
-          variant="ghost"
-          className={`quick-stat ${expiringCount === 0 ? "all-clear" : ""}`}
-          onClick={() => {
-            setFilter("Expiring");
-            onNotice?.("Viewing items needing attention");
-          }}
-          aria-label="View pantry items that need attention"
-        >
-          <span className="stat-icon">
-            <Icon name="sparkle" />
-          </span>
-          <div>
-            <strong>{expiringCount} {expiringCount === 1 ? "item" : "items"}</strong>
-            <span>{expiringCount > 0 ? "need your attention" : "all items fresh"}</span>
-          </div>
-          <Icon name="arrow" size={18} />
-        </Button>
       </section>
 
       <section className="dashboard-grid">
