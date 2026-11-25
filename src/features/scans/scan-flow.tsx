@@ -4,7 +4,12 @@ import React, { useEffect, useRef, useState } from "react";
 import "./scan-flow.css";
 import { Modal, Button } from "@/components";
 import { unitSchema, storageLocationSchema } from "@/contracts/common";
-import { scanIdSchema, type Scan } from "@/contracts/scans";
+import {
+  scanIdSchema,
+  scanKindSchema,
+  type Scan,
+  type ScanKind,
+} from "@/contracts/scans";
 import { createClient } from "@/lib/supabase/client";
 import { createHttpScanApi, type ScanApi } from "./scan-api";
 import {
@@ -49,6 +54,7 @@ export function ScanFlow({
       }),
   );
   const [state, setState] = useState<FlowState>({ phase: "idle" });
+  const [kind, setKind] = useState<ScanKind>("grocery_photo");
   const [drafts, setDrafts] = useState<ScanReviewDraft[]>([]);
   const [error, setError] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(() => {
@@ -120,7 +126,7 @@ export function ScanFlow({
     }
     let request;
     try {
-      request = validateScanFiles(files);
+      request = validateScanFiles(files, kind);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Check your images.");
       return;
@@ -227,7 +233,7 @@ export function ScanFlow({
           ? "Groceries added"
           : currentScan?.status === "review"
             ? "Check your groceries"
-            : "Add groceries from photos"}
+            : "Add groceries from a photo or receipt"}
       </h2>
       {error && <p role="alert">{error}</p>}
       {busy && (
@@ -250,23 +256,46 @@ export function ScanFlow({
               </Button>
             </>
           ) : (
-            <label className="drop-zone">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={!ownerId}
-                onChange={(event) => {
-                  const files = Array.from(event.target.files ?? []);
-                  event.target.value = "";
-                  if (files.length) chooseFiles(files);
-                }}
-              />
-              <strong>Choose a grocery photo</strong>
-              <span>
-                One JPEG, PNG, or WebP image, up to 5 MiB. Export HEIC as JPEG
-                first.
-              </span>
-            </label>
+            <>
+              <label className="scan-source-choice">
+                What are you uploading?
+                <select
+                  value={kind}
+                  onChange={(event) =>
+                    setKind(scanKindSchema.parse(event.target.value))
+                  }
+                >
+                  <option value="grocery_photo">Grocery photo</option>
+                  <option value="receipt">Grocery receipt</option>
+                </select>
+              </label>
+              <p>
+                {kind === "receipt"
+                  ? "Photograph the whole receipt clearly. Only food lines become suggestions. Check abbreviations and amounts before saving. Cover personal or payment details before uploading."
+                  : "Arrange groceries so each food is visible. Check package sizes and quantities before saving."}
+              </p>
+              <label className="drop-zone">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={!ownerId}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    event.target.value = "";
+                    if (files.length) chooseFiles(files);
+                  }}
+                />
+                <strong>
+                  {kind === "receipt"
+                    ? "Choose a receipt photo"
+                    : "Choose a grocery photo"}
+                </strong>
+                <span>
+                  One JPEG, PNG, or WebP image, up to 5 MiB. Export HEIC as JPEG
+                  first.
+                </span>
+              </label>
+            </>
           )}
           {!ownerId && <p>Sign in to use photo recognition.</p>}
         </>
@@ -304,6 +333,11 @@ export function ScanFlow({
                   {draft.proposal.confidence} confidence. Photo{" "}
                   {draft.proposal.imageIndex + 1}.
                 </p>
+                {draft.proposal.sourceText && (
+                  <p className="scan-source-text">
+                    Receipt line <q>{draft.proposal.sourceText}</q>
+                  </p>
+                )}
                 {draft.proposal.warnings.map((warning, index) => (
                   <p key={index}>{warning}</p>
                 ))}

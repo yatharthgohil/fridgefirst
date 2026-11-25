@@ -1,6 +1,6 @@
-# Run grocery-photo recognition
+# Run grocery-photo and receipt recognition
 
-This capstone MVP analyzes one grocery image at a time. A user reviews the suggestions, corrects any uncertain quantities, and confirms which foods to save. Nothing enters the pantry before confirmation.
+This capstone MVP analyzes one grocery photo or receipt image at a time. A user reviews the suggestions, corrects any uncertain quantities, and confirms which foods to save. Nothing enters the pantry before confirmation.
 
 ## 1. Install the branch locally
 
@@ -8,17 +8,22 @@ Use Node.js 22.18 or later. From the repository directory, run:
 
 ```powershell
 git fetch origin
-git switch feat/grocery-photo-recognition
+git switch feat/receipt-recognition
 npm ci
 ```
 
 Keep the existing Supabase URL, publishable key, and Google sign-in configuration. Do not replace a working `.env.local` with the empty example.
 
+The receipt branch includes the photo feature. To review only grocery photos, switch to `feat/grocery-photo-recognition` instead and apply only the first new migration below. Review and merge the photo PR first, then the receipt PR.
+
 ## 2. Apply the scan migration
 
-Open the same Supabase project used by the application. Open **SQL Editor**, create a new query, paste the contents of `supabase/migrations/20261118002121_grocery_scans.sql`, and run it once as the project database owner. Existing pantry migrations must already be applied.
+Open the same Supabase project used by the application. Existing pantry migrations must already be applied. In **SQL Editor**, create a new query and run each new file once as the project database owner, in this order:
 
-This migration creates the private scan records, commands, and `grocery-scans` Storage bucket with its ownership policies. Do not create a public bucket or add permissive policies as a workaround. In **Storage**, verify that `grocery-scans` exists and is private.
+1. `supabase/migrations/20261118002121_grocery_scans.sql`.
+2. `supabase/migrations/20261118042708_receipt_recognition.sql`.
+
+The first migration creates the private scan records, commands, and `grocery-scans` Storage bucket with its ownership policies. The second enables receipt scans and their bounded food-line evidence. Do not create a public bucket or add permissive policies as a workaround. In **Storage**, verify that `grocery-scans` exists and is private.
 
 If using a linked Supabase CLI migration workflow instead, apply the versioned migrations through that workflow. Do not apply the same migration manually and then run it again through the CLI without reconciling migration history.
 
@@ -48,6 +53,14 @@ Run `npm run dev`, open `http://localhost:3000`, and sign in.
 5. Use **Delete source photos** after confirmation. Verify the corresponding file is gone from the private bucket while the pantry items remain.
 6. Try an unclear or non-food image. Verify the flow shows an empty review or a recoverable error, and does not add invented sample groceries.
 7. Sign in with a second account. Verify it cannot resume the first account's scan or view its source image.
+
+Then test receipts:
+
+1. Start a new scan and choose **Grocery receipt**. Cover personal and payment details before photographing it. Upload one clear image containing the complete food lines.
+2. Verify that food suggestions show the food description from the original receipt line. Check abbreviated names against the receipt. Tax, totals, discounts, payments, and household goods should not appear as pantry foods.
+3. Verify that a price such as `3.49` does not become a food quantity. Check any printed weight and unit. Fill in blank quantities and units yourself. Multipack amounts must not rely on an invented package size.
+4. Keep repeated purchases separate if they represent separate lots. Correct or deselect mistakes, confirm, refresh, and check the saved pantry quantities.
+5. Delete the source image through the flow. Verify the pantry foods remain. If the receipt is too small or blurry to read, retake it rather than trusting uncertain suggestions.
 
 After a failed confirmation, retry without changing the selection first. A lost response must not create another batch. To import another purchase, finish or discard the saved scan and start a new one.
 
